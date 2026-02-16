@@ -1,0 +1,37 @@
+{
+  "name": "AutoSplit",
+  "short_name": "AutoSplit",
+  "description": "Track every rupee — cash or UPI — across group trips. AutoSplit calculates who owes whom with minimal transfers.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0a0b0e",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": [
+    "finance",
+    "lifestyle"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "short_name": "Add",
+      "description": "Quickly add a new expense",
+      "url": "/transactions/new"
+    },
+    {
+      "name": "Settle Up",
+      "short_name": "Settle",
+      "description": "View and settle balances",
+      "url": "/settlements"
+    }
+  ]
+}

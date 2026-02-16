@@ -1,0 +1,202 @@
+/* ═══════════════════════════════════════════════════════════════
+   Auth Pages — Premium Glass Card + Gradient Background
+   ═══════════════════════════════════════════════════════════════ */
+
+.authPage {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.bgOrbs {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+}
+
+.orb1 {
+    width: 300px;
+    height: 300px;
+    background: var(--accent-500);
+    top: -100px;
+    right: -80px;
+    opacity: 0.15;
+}
+
+.orb2 {
+    width: 250px;
+    height: 250px;
+    background: linear-gradient(135deg, var(--accent-400), #a855f7);
+    bottom: -80px;
+    left: -80px;
+    opacity: 0.12;
+}
+
+.authCard {
+    width: 100%;
+    max-width: 400px;
+    background: var(--bg-glass, rgba(12, 12, 30, 0.65));
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-2xl);
+    padding: var(--space-6);
+    position: relative;
+    z-index: 1;
+    box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.03),
+        0 0 80px rgba(var(--accent-500-rgb), 0.06);
+}
+
+/* Inner glass highlight */
+.authCard::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(160deg,
+            rgba(255, 255, 255, 0.04) 0%,
+            transparent 40%);
+    pointer-events: none;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    color: var(--fg-primary);
+}
+
+.logoIcon {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--accent-400), var(--accent-600));
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    box-shadow: 0 4px 16px rgba(var(--accent-500-rgb), 0.35);
+}
+
+.title {
+    font-size: var(--text-xl);
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: var(--space-1);
+    background: linear-gradient(135deg, var(--fg-primary), var(--accent-400));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    font-size: var(--text-sm);
+    color: var(--fg-secondary);
+    text-align: center;
+    margin-bottom: var(--space-5);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--fg-tertiary);
+    font-size: var(--text-sm);
+    margin: var(--space-4) 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-default);
+}
+
+.footerText {
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--fg-secondary);
+    margin-top: var(--space-4);
+}
+
+.link {
+    color: var(--accent-400);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.link:hover {
+    color: var(--accent-300);
+    text-decoration: underline;
+}
+
+.error {
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--color-error);
+    background: var(--color-error-bg);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-error-border);
+}
+
+.themeToggle {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    z-index: 10;
+}
+
+/* ── Tablet+ ── */
+@media (min-width: 640px) {
+    .authCard {
+        padding: var(--space-8);
+    }
+
+    .title {
+        font-size: var(--text-2xl);
+    }
+
+    .orb1 {
+        width: 500px;
+        height: 500px;
+        top: -150px;
+        right: -150px;
+        filter: blur(120px);
+        opacity: 0.18;
+    }
+
+    .orb2 {
+        width: 400px;
+        height: 400px;
+        bottom: -120px;
+        left: -120px;
+    }
+}

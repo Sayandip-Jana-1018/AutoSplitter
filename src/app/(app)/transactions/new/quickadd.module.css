@@ -1,0 +1,239 @@
+/* ═══════════════════════════════════════════════════════════════
+   Quick Add Transaction — Mobile-First
+   Full-screen bottom-sheet style entry
+   ═══════════════════════════════════════════════════════════════ */
+
+.quickAdd {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 120px);
+    min-height: calc(100dvh - 120px);
+    gap: var(--space-3);
+}
+
+/* ── Amount Display ── */
+.amountDisplay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-6) var(--space-4) var(--space-4);
+    gap: var(--space-1);
+}
+
+.currencySign {
+    font-size: var(--text-lg);
+    color: var(--fg-tertiary);
+    font-weight: var(--weight-medium);
+}
+
+.amountValue {
+    font-size: 3.5rem;
+    font-weight: var(--weight-extrabold);
+    color: var(--fg-primary);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    min-height: 4rem;
+    text-align: center;
+}
+
+.amountValue.placeholder {
+    color: var(--fg-muted);
+}
+
+/* ── Title Input ── */
+.titleInput {
+    text-align: center;
+    border: none;
+    background: none;
+    font-size: var(--text-base);
+    font-weight: var(--weight-medium);
+    color: var(--fg-primary);
+    width: 100%;
+    padding: var(--space-2);
+    outline: none;
+}
+
+.titleInput::placeholder {
+    color: var(--fg-muted);
+}
+
+/* ── Category & Payer Row ── */
+.metaRow {
+    display: flex;
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.metaRow::-webkit-scrollbar {
+    display: none;
+}
+
+/* ── Chip (tappable pill) ── */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1.5px solid var(--border-default);
+    background: var(--surface-input);
+    color: var(--fg-secondary);
+    transition: all var(--duration-fast) var(--ease-out);
+    flex-shrink: 0;
+}
+
+.chip:hover,
+.chip:active {
+    border-color: var(--border-strong);
+    background: var(--surface-input-hover);
+}
+
+.chipActive {
+    border-color: var(--accent-500);
+    background: rgba(var(--accent-500-rgb), 0.1);
+    color: var(--accent-500);
+}
+
+/* ── Numpad ── */
+.numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border-subtle);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    margin-top: auto;
+}
+
+.numKey {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 64px;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    color: var(--fg-primary);
+    background: var(--surface-card);
+    cursor: pointer;
+    border: none;
+    user-select: none;
+    transition: background var(--duration-fast) var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.numKey:active {
+    background: var(--bg-tertiary);
+}
+
+.numKeyAction {
+    color: var(--accent-500);
+    font-weight: var(--weight-bold);
+}
+
+.numKeyDelete {
+    color: var(--color-error);
+}
+
+/* ── Submit Button ── */
+.submitBtn {
+    margin: var(--space-2);
+}
+
+/* ── Category Picker Sheet ── */
+.categoryGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+}
+
+.categoryItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    border: 1.5px solid var(--border-default);
+    background: var(--surface-input);
+    transition: all var(--duration-fast) var(--ease-out);
+}
+
+.categoryItem:active,
+.categoryItemActive {
+    border-color: var(--accent-500);
+    background: rgba(var(--accent-500-rgb), 0.1);
+}
+
+.categoryEmoji {
+    font-size: 24px;
+}
+
+.categoryLabel {
+    font-size: var(--text-xs);
+    color: var(--fg-secondary);
+    font-weight: var(--weight-medium);
+}
+
+/* ── Payer Selector ── */
+.payerGrid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.payerItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    border: 1.5px solid var(--border-default);
+    background: var(--surface-input);
+    transition: all var(--duration-fast) var(--ease-out);
+}
+
+.payerItem:active,
+.payerItemActive {
+    border-color: var(--accent-500);
+    background: rgba(var(--accent-500-rgb), 0.1);
+}
+
+.payerName {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--fg-primary);
+}
+
+/* ── Split indicator ── */
+.splitInfo {
+    text-align: center;
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--fg-tertiary);
+}
+
+.splitAmount {
+    color: var(--accent-500);
+    font-weight: var(--weight-semibold);
+}
+
+@media (min-width: 640px) {
+    .numKey {
+        height: 72px;
+        font-size: var(--text-2xl);
+    }
+
+    .amountValue {
+        font-size: 4rem;
+    }
+}

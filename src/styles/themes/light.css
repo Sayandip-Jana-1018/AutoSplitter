@@ -1,0 +1,69 @@
+/* ═══════════════════════════════════════════════════════════════
+   Light Mode Theme
+   Applied when: <html data-theme="light">
+   ═══════════════════════════════════════════════════════════════ */
+
+[data-theme="light"] {
+    color-scheme: light;
+
+    /* ── Backgrounds ── */
+    --bg-primary: #f8f9fc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f3f8;
+    --bg-elevated: #ffffff;
+    --bg-sunken: #edf0f5;
+    --bg-overlay: rgba(15, 23, 42, 0.4);
+    --bg-glass: rgba(255, 255, 255, 0.75);
+    --bg-glass-strong: rgba(255, 255, 255, 0.92);
+
+    /* ── Foregrounds (text) ── */
+    --fg-primary: #0f172a;
+    --fg-secondary: #475569;
+    --fg-tertiary: #94a3b8;
+    --fg-muted: #cbd5e1;
+    --fg-inverse: #ffffff;
+    --fg-on-accent: #ffffff;
+
+    /* ── Borders ── */
+    --border-default: rgba(0, 0, 0, 0.06);
+    --border-subtle: rgba(0, 0, 0, 0.03);
+    --border-strong: rgba(0, 0, 0, 0.1);
+    --border-focus: var(--accent-500);
+    --border-glass: rgba(0, 0, 0, 0.04);
+
+    /* ── Surfaces (cards, panels) ── */
+    --surface-card: rgba(255, 255, 255, 0.8);
+    --surface-card-hover: rgba(255, 255, 255, 0.95);
+    --surface-panel: #ffffff;
+    --surface-popover: #ffffff;
+    --surface-input: #ffffff;
+    --surface-input-hover: #f8fafc;
+
+    /* ── Semantic Colors ── */
+    --color-success: #10b981;
+    --color-success-bg: #ecfdf5;
+    --color-success-border: #a7f3d0;
+    --color-warning: #f59e0b;
+    --color-warning-bg: #fffbeb;
+    --color-warning-border: #fde68a;
+    --color-error: #ef4444;
+    --color-error-bg: #fef2f2;
+    --color-error-border: #fecaca;
+    --color-info: #3b82f6;
+    --color-info-bg: #eff6ff;
+    --color-info-border: #bfdbfe;
+
+    /* ── Scrollbar ── */
+    --scrollbar-bg: transparent;
+    --scrollbar-thumb: #d1d5db;
+    --scrollbar-thumb-hover: #9ca3af;
+
+    /* ── Shadows ── */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.08), 0 8px 16px rgba(0, 0, 0, 0.04);
+    --shadow-glow: 0 0 20px rgba(var(--accent-500-rgb), 0.12);
+    --shadow-glow-lg: 0 0 40px rgba(var(--accent-500-rgb), 0.15);
+}
