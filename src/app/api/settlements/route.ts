@@ -91,6 +91,26 @@ export async function GET(req: Request) {
             if (creditors[j].amount === 0) j++;
         }
 
+        // Resolve user names for computed transfers
+        const allUserIds = new Set<string>();
+        for (const t of transfers) { allUserIds.add(t.from); allUserIds.add(t.to); }
+        const users = allUserIds.size > 0
+            ? await prisma.user.findMany({
+                where: { id: { in: Array.from(allUserIds) } },
+                select: { id: true, name: true, image: true },
+            })
+            : [];
+        const nameMap = Object.fromEntries(users.map(u => [u.id, u.name || 'Unknown']));
+        const imageMap = Object.fromEntries(users.map(u => [u.id, u.image || null]));
+
+        const computedWithNames = transfers.map(t => ({
+            ...t,
+            fromName: nameMap[t.from] || 'Unknown',
+            toName: nameMap[t.to] || 'Unknown',
+            fromImage: imageMap[t.from] || null,
+            toImage: imageMap[t.to] || null,
+        }));
+
         // Get recorded settlements
         const recorded = await prisma.settlement.findMany({
             where: { tripId },
@@ -102,7 +122,7 @@ export async function GET(req: Request) {
         });
 
         return NextResponse.json({
-            computed: transfers,
+            computed: computedWithNames,
             recorded,
             balances,
         });

@@ -8,7 +8,9 @@ export type PaletteId =
     | 'amethyst-haze' | 'cosmic-night' | 'quantum-rose'
     | 'emerald-glow' | 'ocean-breeze' | 'solar-dusk'
     | 'bold-tech' | 'amber-minimal' | 'perpetuity'
-    | 'tangerine' | 'pastel-dreams' | 'cyberpunk';
+    | 'tangerine' | 'pastel-dreams' | 'cyberpunk'
+    | 'midnight-indigo' | 'cherry-blossom' | 'lime-fusion'
+    | 'sky-blue' | 'warm-coral' | 'lavender-mist';
 
 export interface ColorPalette {
     id: PaletteId;
@@ -109,6 +111,48 @@ export const COLOR_PALETTES: ColorPalette[] = [
         accent400: '#e879f9', accent500: '#d946ef', accent600: '#c026d3',
         accent500rgb: '217, 70, 239',
         swatches: ['#f5d0fe', '#e879f9', '#c026d3'],
+    },
+    {
+        id: 'midnight-indigo',
+        name: 'Midnight Indigo',
+        accent400: '#a5b4fc', accent500: '#6366f1', accent600: '#4338ca',
+        accent500rgb: '99, 102, 241',
+        swatches: ['#c7d2fe', '#a5b4fc', '#4338ca'],
+    },
+    {
+        id: 'cherry-blossom',
+        name: 'Cherry Blossom',
+        accent400: '#fda4af', accent500: '#fb7185', accent600: '#e11d48',
+        accent500rgb: '251, 113, 133',
+        swatches: ['#ffe4e6', '#fda4af', '#e11d48'],
+    },
+    {
+        id: 'lime-fusion',
+        name: 'Lime Fusion',
+        accent400: '#a3e635', accent500: '#84cc16', accent600: '#65a30d',
+        accent500rgb: '132, 204, 22',
+        swatches: ['#d9f99d', '#a3e635', '#65a30d'],
+    },
+    {
+        id: 'sky-blue',
+        name: 'Sky Blue',
+        accent400: '#7dd3fc', accent500: '#38bdf8', accent600: '#0284c7',
+        accent500rgb: '56, 189, 248',
+        swatches: ['#bae6fd', '#7dd3fc', '#0284c7'],
+    },
+    {
+        id: 'warm-coral',
+        name: 'Warm Coral',
+        accent400: '#fca5a5', accent500: '#f87171', accent600: '#b91c1c',
+        accent500rgb: '248, 113, 113',
+        swatches: ['#fee2e2', '#fca5a5', '#b91c1c'],
+    },
+    {
+        id: 'lavender-mist',
+        name: 'Lavender Mist',
+        accent400: '#d8b4fe', accent500: '#c084fc', accent600: '#7e22ce',
+        accent500rgb: '192, 132, 252',
+        swatches: ['#f3e8ff', '#d8b4fe', '#7e22ce'],
     },
 ];
 

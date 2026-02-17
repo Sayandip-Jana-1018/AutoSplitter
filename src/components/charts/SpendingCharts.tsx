@@ -43,7 +43,7 @@ export function SpendingPieChart({ data = MOCK_CATEGORY_DATA }: { data?: Categor
                 Spending by Category
             </h4>
             <div style={{ width: '100%', height: 220 }}>
-                <ResponsiveContainer>
+                <ResponsiveContainer minWidth={0}>
                     <PieChart>
                         <Pie
                             data={data}
@@ -121,7 +121,7 @@ export function DailySpendingChart({ data = MOCK_DAILY_DATA }: { data?: DailyDat
                 Daily Spending
             </h4>
             <div style={{ width: '100%', height: 200 }}>
-                <ResponsiveContainer>
+                <ResponsiveContainer minWidth={0}>
                     <BarChart data={data} barSize={24}>
                         <CartesianGrid
                             strokeDasharray="3 3"
@@ -193,7 +193,7 @@ export function MemberSpendChart({ data = MOCK_MEMBER_DATA }: { data?: MemberSpe
                 Who Paid vs Who Owes
             </h4>
             <div style={{ width: '100%', height: 200 }}>
-                <ResponsiveContainer>
+                <ResponsiveContainer minWidth={0}>
                     <BarChart data={data} layout="vertical" barSize={14}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
                         <XAxis

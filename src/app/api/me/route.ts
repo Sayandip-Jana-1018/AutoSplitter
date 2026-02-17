@@ -38,6 +38,7 @@ const UpdateProfileSchema = z.object({
     name: z.string().min(1).max(100).optional(),
     phone: z.string().max(20).optional(),
     upiId: z.string().max(100).optional(),
+    image: z.string().max(2000).optional(),
 });
 
 // PATCH /api/me — update current user's profile
@@ -58,6 +59,7 @@ export async function PATCH(req: Request) {
         if (parsed.data.name) updateData.name = parsed.data.name;
         if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone;
         if (parsed.data.upiId !== undefined) updateData.upiId = parsed.data.upiId;
+        if (parsed.data.image !== undefined) updateData.image = parsed.data.image;
 
         const user = await prisma.user.update({
             where: { email: session.user.email },

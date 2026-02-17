@@ -1,10 +1,22 @@
 'use client';
 
+import { motion } from 'framer-motion';
+
 /**
  * template.tsx re-renders on EVERY route change in Next.js App Router.
- * Using a simple wrapper without framer-motion initial animation
- * to avoid hydration mismatch between server and client.
+ * Provides a premium cross-fade + slide-up + blur page transition.
  */
 export default function AppTemplate({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{
+                duration: 0.3,
+                ease: [0.16, 1, 0.3, 1],
+            }}
+        >
+            {children}
+        </motion.div>
+    );
 }

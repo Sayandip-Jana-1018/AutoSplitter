@@ -34,6 +34,9 @@ export default function SettingsPage() {
     const [editUpiId, setEditUpiId] = useState('');
     const [savingProfile, setSavingProfile] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => { setMounted(true); }, []);
 
     useEffect(() => {
         if (user) {
@@ -106,31 +109,12 @@ export default function SettingsPage() {
         catch { window.location.href = '/login'; }
     };
 
-    const memberSince = user?.createdAt
+    const memberSince = mounted && user?.createdAt
         ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
         : '...';
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-            {/* ═══ HEADER ═══ */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <Settings size={14} style={{ color: 'var(--accent-400)' }} />
-                    <span style={{
-                        fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)',
-                        fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-                    }}>
-                        Preferences
-                    </span>
-                </div>
-                <h2 style={{
-                    fontSize: 'var(--text-xl)', fontWeight: 800,
-                    background: 'linear-gradient(135deg, var(--fg-primary), var(--accent-400))',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                }}>
-                    Settings
-                </h2>
-            </motion.div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)', maxWidth: 500, width: '100%', margin: '0 auto' }}>
 
             {/* ═══ PROFILE CARD — Glassmorphic with glow ring ═══ */}
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.05 }}>
@@ -179,7 +163,7 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-3)', textAlign: 'center' }}>
                                 {/* Avatar with glow ring */}
                                 <div style={{
                                     padding: 3, borderRadius: '50%',
@@ -208,7 +192,7 @@ export default function SettingsPage() {
                                         <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatarUpload} style={{ display: 'none' }} disabled={uploadingAvatar} />
                                     </label>
                                 </div>
-                                <div style={{ flex: 1 }}>
+                                <div>
                                     <div style={{
                                         fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--fg-primary)',
                                     }}>
@@ -244,8 +228,8 @@ export default function SettingsPage() {
                 <GlassSection title="Appearance" icon={<Palette size={16} />}>
                     {/* Theme Toggle */}
                     <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: 'var(--space-3) 0',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: 'var(--space-3) 0', gap: 'var(--space-3)',
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                             {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
@@ -259,10 +243,10 @@ export default function SettingsPage() {
 
                     {/* Color Palette Picker */}
                     <div style={{ padding: 'var(--space-3) 0' }}>
-                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>
+                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-3)', textAlign: 'center' }}>
                             Accent Color
                         </div>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
                             {COLOR_PALETTES.map((p) => {
                                 const isActive = palette === p.id;
                                 return (
@@ -378,7 +362,7 @@ function GlassSection({ title, icon, children }: {
             overflow: 'hidden',
         }}>
             <div style={{
-                display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
                 marginBottom: 'var(--space-3)', paddingBottom: 'var(--space-2)',
                 borderBottom: '1px solid var(--border-subtle)',
             }}>
@@ -395,12 +379,13 @@ function GlassRow({ label, subtitle, danger, action, disabled }: {
 }) {
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 'var(--space-3) 0', opacity: disabled ? 0.5 : 1,
             cursor: disabled ? 'default' : action ? 'pointer' : 'default',
             borderBottom: '1px solid rgba(var(--accent-500-rgb), 0.04)',
+            gap: 6,
         }}>
-            <div>
+            <div style={{ textAlign: 'center' }}>
                 <div style={{
                     fontSize: 'var(--text-sm)', fontWeight: 600,
                     color: danger ? 'var(--color-error)' : 'var(--fg-primary)',

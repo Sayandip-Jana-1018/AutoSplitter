@@ -104,7 +104,6 @@ export const CATEGORIES: Record<string, { label: string; emoji: string }> = {
     general: { label: 'General', emoji: '📦' },
     food: { label: 'Food & Drinks', emoji: '🍕' },
     transport: { label: 'Transport', emoji: '🚗' },
-    stay: { label: 'Accommodation', emoji: '🏨' },
     shopping: { label: 'Shopping', emoji: '🛍️' },
     tickets: { label: 'Tickets & Entry', emoji: '🎫' },
     fuel: { label: 'Fuel', emoji: '⛽' },

@@ -88,33 +88,62 @@ export default function Skeleton({
 /** Pre-built skeleton layouts for common patterns */
 export function DashboardSkeleton() {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-            {/* Welcome */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+            {/* Hero Balance Card */}
+            <div style={{
+                background: 'var(--bg-glass)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid var(--border-glass)',
+                borderRadius: 'var(--radius-2xl)',
+                padding: 'var(--space-5)',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+                    <Skeleton variant="circle" width={36} height={36} />
+                    <div style={{ marginLeft: 12 }}>
+                        <Skeleton width={80} height={10} />
+                        <div style={{ marginTop: 6 }}><Skeleton width={140} height={14} /></div>
+                    </div>
+                </div>
+                <Skeleton width={200} height={36} />
+                <div style={{ marginTop: 12 }}><Skeleton width={160} height={12} /></div>
+                <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
+                    <Skeleton variant="rectangular" height={56} />
+                    <Skeleton variant="rectangular" height={56} />
+                </div>
+            </div>
+
+            {/* Greeting */}
             <div>
-                <Skeleton width={120} height={12} />
-                <div style={{ marginTop: 8 }}>
-                    <Skeleton width={220} height={28} />
-                </div>
-                <div style={{ marginTop: 8 }}>
-                    <Skeleton width={300} height={14} />
-                </div>
+                <Skeleton width={180} height={14} />
+                <div style={{ marginTop: 6 }}><Skeleton width={260} height={20} /></div>
             </div>
 
             {/* Stats grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-3)' }}>
                 <Skeleton variant="stat" />
                 <Skeleton variant="stat" />
-                <Skeleton variant="stat" />
-                <Skeleton variant="stat" />
             </div>
 
-            {/* Transaction list */}
+            {/* Recent Transactions */}
             <div>
-                <Skeleton width={160} height={16} />
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Skeleton width={140} height={14} />
+                    <Skeleton width={60} height={12} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                     <Skeleton variant="card" />
                     <Skeleton variant="card" />
                     <Skeleton variant="card" />
+                </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div>
+                <Skeleton width={120} height={14} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)', marginTop: 12 }}>
+                    <Skeleton variant="rectangular" height={72} />
+                    <Skeleton variant="rectangular" height={72} />
+                    <Skeleton variant="rectangular" height={72} />
                 </div>
             </div>
         </div>

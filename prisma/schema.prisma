@@ -71,6 +71,8 @@ model User {
   splitItems   SplitItem[]
   settleFrom   Settlement[]  @relation("SettleFrom")
   settleTo     Settlement[]  @relation("SettleTo")
+  contacts     Contact[]     @relation("UserContacts")
+  linkedContacts Contact[]   @relation("LinkedContacts")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -173,4 +175,23 @@ model Settlement {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Contact {
+  id       String  @id @default(cuid())
+  ownerId  String
+  name     String
+  email    String
+  phone    String?
+  image    String?
+
+  owner User @relation("UserContacts", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // If this contact is a registered user, link to them
+  linkedUserId String?
+  linkedUser   User?   @relation("LinkedContacts", fields: [linkedUserId], references: [id])
+
+  addedAt DateTime @default(now())
+
+  @@unique([ownerId, email])
 }

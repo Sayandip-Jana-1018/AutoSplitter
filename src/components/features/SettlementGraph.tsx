@@ -14,6 +14,7 @@ interface Settlement {
 interface SettlementGraphProps {
     members: string[];
     settlements: Settlement[];
+    memberImages?: Record<string, string | null>;
 }
 
 function getNodePositions(count: number, cx: number, cy: number, radius: number) {
@@ -26,7 +27,7 @@ function getNodePositions(count: number, cx: number, cy: number, radius: number)
     });
 }
 
-export default function SettlementGraph({ members, settlements }: SettlementGraphProps) {
+export default function SettlementGraph({ members, settlements, memberImages = {} }: SettlementGraphProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState({ w: 320, h: 320 });
 
@@ -140,6 +141,7 @@ export default function SettlementGraph({ members, settlements }: SettlementGrap
                     const pos = positions[i];
                     const color = getAvatarColor(name);
                     const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                    const image = memberImages[name] || null;
 
                     return (
                         <motion.g
@@ -148,6 +150,12 @@ export default function SettlementGraph({ members, settlements }: SettlementGrap
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ delay: i * 0.1, type: 'spring', stiffness: 300, damping: 20 }}
                         >
+                            {/* Clip path for circular image */}
+                            <defs>
+                                <clipPath id={`avatar-clip-${i}`}>
+                                    <circle cx={pos.x} cy={pos.y} r={22} />
+                                </clipPath>
+                            </defs>
                             {/* Glow */}
                             <circle
                                 cx={pos.x}
@@ -156,26 +164,50 @@ export default function SettlementGraph({ members, settlements }: SettlementGrap
                                 fill={color}
                                 opacity={0.15}
                             />
-                            {/* Circle */}
-                            <circle
-                                cx={pos.x}
-                                cy={pos.y}
-                                r={22}
-                                fill={color}
-                                stroke="var(--bg-primary)"
-                                strokeWidth={3}
-                            />
-                            {/* Initials */}
-                            <text
-                                x={pos.x}
-                                y={pos.y + 5}
-                                textAnchor="middle"
-                                fontSize={12}
-                                fontWeight={700}
-                                fill="white"
-                            >
-                                {initials}
-                            </text>
+                            {image ? (
+                                /* Profile photo */
+                                <>
+                                    <image
+                                        href={image}
+                                        x={pos.x - 22}
+                                        y={pos.y - 22}
+                                        width={44}
+                                        height={44}
+                                        clipPath={`url(#avatar-clip-${i})`}
+                                        preserveAspectRatio="xMidYMid slice"
+                                    />
+                                    <circle
+                                        cx={pos.x}
+                                        cy={pos.y}
+                                        r={22}
+                                        fill="none"
+                                        stroke="var(--bg-primary)"
+                                        strokeWidth={3}
+                                    />
+                                </>
+                            ) : (
+                                /* Initials fallback */
+                                <>
+                                    <circle
+                                        cx={pos.x}
+                                        cy={pos.y}
+                                        r={22}
+                                        fill={color}
+                                        stroke="var(--bg-primary)"
+                                        strokeWidth={3}
+                                    />
+                                    <text
+                                        x={pos.x}
+                                        y={pos.y + 5}
+                                        textAnchor="middle"
+                                        fontSize={12}
+                                        fontWeight={700}
+                                        fill="white"
+                                    >
+                                        {initials}
+                                    </text>
+                                </>
+                            )}
                             {/* Name label */}
                             <text
                                 x={pos.x}

@@ -200,6 +200,203 @@
     animation-delay: 300ms;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   🆕 Modernization Utilities
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Mesh gradient breathing (Apple Card effect) ── */
+@keyframes meshBreathe {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+        filter: hue-rotate(0deg);
+    }
+
+    25% {
+        background-position: 50% 0%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+        filter: hue-rotate(8deg);
+    }
+
+    75% {
+        background-position: 50% 100%;
+    }
+}
+
+.mesh-breathe {
+    background-size: 300% 300%;
+    animation: meshBreathe 12s ease-in-out infinite;
+}
+
+/* ── Noise texture overlay — use as ::after pseudo-element ── */
+.noise-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 128px 128px;
+    pointer-events: none;
+    z-index: 1;
+    mix-blend-mode: overlay;
+}
+
+[data-theme="light"] .noise-overlay::after {
+    opacity: 0.04;
+}
+
+/* ── Gradient text — accent gradient on headings ── */
+.gradient-text {
+    background: linear-gradient(135deg, var(--accent-400), var(--accent-500), var(--accent-600));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Animated gradient text — premium shimmer */
+.gradient-text-animated {
+    background: linear-gradient(135deg,
+            var(--accent-400) 0%,
+            var(--accent-500) 25%,
+            var(--accent-600) 50%,
+            var(--accent-400) 75%,
+            var(--accent-500) 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientShift 6s ease infinite;
+}
+
+/* ── Card micro-interactions — hover lift + press scale ── */
+.card-interactive {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+}
+
+.card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+}
+
+.card-interactive:active {
+    transform: translateY(0) scale(0.985);
+    transition-duration: 0.1s;
+}
+
+/* ── Top-edge highlight for glass cards ── */
+.card-highlight {
+    position: relative;
+    overflow: hidden;
+}
+
+.card-highlight::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.15),
+            transparent);
+    pointer-events: none;
+    z-index: 2;
+}
+
+[data-theme="light"] .card-highlight::before {
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(var(--accent-500-rgb), 0.12),
+            transparent);
+}
+
+/* ── Ripple effect on buttons ── */
+.ripple-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple-btn::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, rgba(var(--accent-500-rgb), 0.25) 10%, transparent 10.01%);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    transform: scale(10);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.8s;
+}
+
+.ripple-btn:active::after {
+    transform: scale(0);
+    opacity: 0.3;
+    transition: 0s;
+}
+
+/* ── Glow pulse — subtle ambient glow animation ── */
+@keyframes glowPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(var(--accent-500-rgb), 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(var(--accent-500-rgb), 0.2);
+    }
+}
+
+.glow-pulse {
+    animation: glowPulse 4s ease-in-out infinite;
+}
+
+/* ── Icon bounce on active ── */
+@keyframes iconBounce {
+    0% {
+        transform: scale(1);
+    }
+
+    30% {
+        transform: scale(1.2);
+    }
+
+    50% {
+        transform: scale(0.95);
+    }
+
+    70% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.icon-bounce {
+    animation: iconBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Parallax scroll helper ── */
+.parallax-scroll {
+    transition: transform 0.1s linear, filter 0.3s ease, opacity 0.3s ease;
+    will-change: transform, filter, opacity;
+}
+
 /* ── Reduced motion preference ── */
 @media (prefers-reduced-motion: reduce) {
 

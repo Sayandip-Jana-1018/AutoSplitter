@@ -30,7 +30,7 @@ export default function QuickAddPage() {
     const [groups, setGroups] = useState<GroupItem[]>([]);
     const [selectedGroupId, setSelectedGroupId] = useState<string>('');
     const [activeTripId, setActiveTripId] = useState<string>('');
-    const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+    const [members, setMembers] = useState<{ id: string; name: string; image?: string | null }[]>([]);
     const [loadingGroups, setLoadingGroups] = useState(true);
 
     // Form state
@@ -76,7 +76,6 @@ export default function QuickAddPage() {
         loadGroups();
     }, []);
 
-    // When group changes, fetch its detail (for trip ID and members)
     useEffect(() => {
         if (!selectedGroupId) return;
         async function loadGroupDetail() {
@@ -84,14 +83,31 @@ export default function QuickAddPage() {
                 const res = await fetch(`/api/groups/${selectedGroupId}`);
                 if (res.ok) {
                     const data = await res.json();
-                    // Get active trip
+                    // Get active trip — if none, auto-create one
                     if (data.activeTrip) {
                         setActiveTripId(data.activeTrip.id);
+                    } else {
+                        // Auto-create a default trip for this group
+                        try {
+                            const tripRes = await fetch('/api/trips', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    groupId: selectedGroupId,
+                                    title: 'General',
+                                }),
+                            });
+                            if (tripRes.ok) {
+                                const trip = await tripRes.json();
+                                setActiveTripId(trip.id);
+                            }
+                        } catch { /* silently fail */ }
                     }
                     // Set members from group
-                    const memberList = (data.members || []).map((m: { user: { id: string; name: string | null } }) => ({
+                    const memberList = (data.members || []).map((m: { user: { id: string; name: string | null; image?: string | null } }) => ({
                         id: m.user.id,
                         name: m.user.name || 'Unknown',
+                        image: m.user.image || null,
                     }));
                     setMembers(memberList);
                     // Default payer to current user
@@ -133,23 +149,39 @@ export default function QuickAddPage() {
     }, [amount]);
 
     const handleSave = async () => {
-        // Client-side Zod validation
-        const formSchema = z.object({
-            title: z.string().min(1, 'Please add a description').max(200, 'Description too long'),
-            amount: z.number().positive('Amount must be greater than zero'),
-            tripId: z.string().min(1, 'Please select a group with an active trip'),
-        });
+        // Use category label as fallback title
+        const effectiveTitle = title.trim() || catData.label;
 
-        const result = formSchema.safeParse({
-            title: title.trim(),
-            amount: numericAmount,
-            tripId: activeTripId,
-        });
-
-        if (!result.success) {
-            const firstError = result.error.issues[0];
-            toast(firstError.message, 'error');
+        if (!numericAmount || numericAmount <= 0) {
+            toast('Amount must be greater than zero', 'error');
             return;
+        }
+        if (!selectedGroupId) {
+            toast('Please select a group', 'error');
+            return;
+        }
+
+        // If no trip exists yet, auto-create one
+        let tripId = activeTripId;
+        if (!tripId) {
+            try {
+                const tripRes = await fetch('/api/trips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ groupId: selectedGroupId, title: 'General' }),
+                });
+                if (tripRes.ok) {
+                    const trip = await tripRes.json();
+                    tripId = trip.id;
+                    setActiveTripId(trip.id);
+                } else {
+                    toast('Failed to create trip for this group', 'error');
+                    return;
+                }
+            } catch {
+                toast('Network error — please try again', 'error');
+                return;
+            }
         }
 
         setSaving(true);
@@ -158,8 +190,8 @@ export default function QuickAddPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    tripId: activeTripId,
-                    title: title.trim(),
+                    tripId,
+                    title: effectiveTitle,
                     amount: toPaise(numericAmount),
                     category,
                     method,
@@ -168,7 +200,7 @@ export default function QuickAddPage() {
             });
 
             if (res.ok) {
-                toast(`Expense added! ${formatCurrency(toPaise(numericAmount))} for "${title.trim()}"`, 'success');
+                toast(`Expense added! ${formatCurrency(toPaise(numericAmount))} for "${effectiveTitle}"`, 'success');
                 router.push('/transactions');
             } else {
                 const err = await res.json().catch(() => ({}));
@@ -299,7 +331,7 @@ export default function QuickAddPage() {
                 <Button
                     fullWidth
                     size="lg"
-                    disabled={!numericAmount || !title.trim() || !activeTripId}
+                    disabled={!numericAmount}
                     loading={saving}
                     leftIcon={<Check size={18} />}
                     onClick={handleSave}
@@ -379,7 +411,7 @@ export default function QuickAddPage() {
                             whileTap={{ scale: 0.97 }}
                             onClick={() => { setPayerId(member.id); setShowPayers(false); }}
                         >
-                            <Avatar name={member.name} size="sm" />
+                            <Avatar name={member.name} image={member.image} size="sm" />
                             <span className={styles.payerName}>
                                 {member.id === currentUser?.id ? `${member.name} (You)` : member.name}
                             </span>

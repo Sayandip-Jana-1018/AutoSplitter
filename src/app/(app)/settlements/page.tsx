@@ -29,7 +29,7 @@ const glass: React.CSSProperties = {
 
 /* ── Types ── */
 interface UserRef { id: string; name: string | null; image?: string | null }
-interface ComputedTransfer { from: string; to: string; amount: number }
+interface ComputedTransfer { from: string; to: string; amount: number; fromName?: string; toName?: string; fromImage?: string | null; toImage?: string | null }
 interface RecordedSettlement {
     id: string; fromId: string; toId: string; amount: number;
     status: string; method: string | null; note: string | null;
@@ -48,6 +48,7 @@ export default function SettlementsPage() {
     const [computed, setComputed] = useState<ComputedTransfer[]>([]);
     const [recorded, setRecorded] = useState<RecordedSettlement[]>([]);
     const [memberNames, setMemberNames] = useState<Record<string, string>>({});
+    const [memberImages, setMemberImages] = useState<Record<string, string | null>>({});
     const [graphMembers, setGraphMembers] = useState<string[]>([]);
     const [activeTripId, setActiveTripId] = useState<string>('');
     const [tab, setTab] = useState<'pending' | 'settled'>('pending');
@@ -73,6 +74,18 @@ export default function SettlementsPage() {
                 }
             }
             setMemberNames(nameMap);
+
+            // Build image map from group members
+            const imgMap: Record<string, string | null> = {};
+            for (const g of groups) {
+                if (g.members) {
+                    for (const m of g.members) {
+                        const userId = m.userId || m.user?.id;
+                        if (userId) imgMap[userId] = m.user?.image || null;
+                    }
+                }
+            }
+            setMemberImages(imgMap);
 
             const detailRes = await fetch(`/api/groups/${groups[0].id}`);
             if (!detailRes.ok) { setLoading(false); return; }
@@ -103,8 +116,8 @@ export default function SettlementsPage() {
 
     const pendingSettlements = computed.map((t, i) => ({
         id: `computed-${i}`,
-        from: { name: memberNames[t.from] || t.from, id: t.from },
-        to: { name: memberNames[t.to] || t.to, id: t.to },
+        from: { name: memberNames[t.from] || t.fromName || t.from, id: t.from, image: t.fromImage || memberImages[t.from] || null },
+        to: { name: memberNames[t.to] || t.toName || t.to, id: t.to, image: t.toImage || memberImages[t.to] || null },
         amount: t.amount, status: 'pending' as const,
     }));
 
@@ -112,8 +125,8 @@ export default function SettlementsPage() {
         .filter(r => r.status === 'completed')
         .map(r => ({
             id: r.id,
-            from: { name: r.from.name || 'Unknown', id: r.fromId },
-            to: { name: r.to.name || 'Unknown', id: r.toId },
+            from: { name: r.from.name || 'Unknown', id: r.fromId, image: r.from.image || null },
+            to: { name: r.to.name || 'Unknown', id: r.toId, image: r.to.image || null },
             amount: r.amount, status: 'settled' as const,
         }));
 
@@ -129,8 +142,18 @@ export default function SettlementsPage() {
         from: s.from.name, to: s.to.name, amount: s.amount,
     }));
 
+    // Build name→image map for graph nodes
+    const graphMemberImages: Record<string, string | null> = {};
+    for (const [id, name] of Object.entries(memberNames)) {
+        graphMemberImages[name] = memberImages[id] || null;
+    }
+
     const handleMarkAsPaid = async () => {
-        if (!confirmSettle || !activeTripId) return;
+        if (!confirmSettle) return;
+        if (!activeTripId) {
+            toast('No active trip found — please add an expense first', 'error');
+            return;
+        }
         setSettling(true);
         try {
             const res = await fetch('/api/settlements', {
@@ -163,23 +186,7 @@ export default function SettlementsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             {/* ═══ HEADER ═══ */}
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <ArrowRightLeft size={14} style={{ color: 'var(--accent-400)' }} />
-                    <span style={{
-                        fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)',
-                        fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-                    }}>
-                        Settle Up
-                    </span>
-                </div>
-                <h2 style={{
-                    fontSize: 'var(--text-xl)', fontWeight: 800,
-                    background: 'linear-gradient(135deg, var(--fg-primary), var(--accent-400))',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                }}>
-                    Settlements
-                </h2>
-                <p style={{ color: 'var(--fg-tertiary)', fontSize: 'var(--text-xs)', marginTop: 2 }}>
+                <p style={{ color: 'var(--fg-tertiary)', fontSize: 'var(--text-xs)' }}>
                     Minimum transfers to settle all debts
                 </p>
             </motion.div>
@@ -257,7 +264,7 @@ export default function SettlementsPage() {
                                 style={{ overflow: 'hidden' }}
                             >
                                 <div style={{ ...glass, borderRadius: 'var(--radius-2xl)', padding: 'var(--space-4)' }}>
-                                    <SettlementGraph members={graphMembers} settlements={graphSettlements} />
+                                    <SettlementGraph members={graphMembers} settlements={graphSettlements} memberImages={graphMemberImages} />
                                 </div>
                             </motion.div>
                         )}
@@ -345,10 +352,10 @@ export default function SettlementsPage() {
                                     e.currentTarget.style.boxShadow = '';
                                 }}
                             >
-                                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', alignItems: 'center', textAlign: 'center' }}>
                                     {/* Transfer direction */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                                        <Avatar name={settlement.from.name} size="sm" />
+                                        <Avatar name={settlement.from.name} image={settlement.from.image} size="sm" />
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)' }}>
                                                 <span style={{
@@ -383,10 +390,10 @@ export default function SettlementsPage() {
 
                                     {/* Actions */}
                                     {!isSettled && (
-                                        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                                        <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center', width: '100%', marginLeft: 'var(--space-10)' }}>
                                             {isSender && (
                                                 <>
-                                                    <Button size="sm" fullWidth leftIcon={<ExternalLink size={13} />}
+                                                    <Button size="sm" leftIcon={<ExternalLink size={13} />}
                                                         style={{
                                                             background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
                                                             boxShadow: '0 4px 16px rgba(var(--accent-500-rgb), 0.25)',
@@ -410,7 +417,7 @@ export default function SettlementsPage() {
                                             )}
                                             {isReceiver && (
                                                 <>
-                                                    <Button size="sm" fullWidth variant="outline"
+                                                    <Button size="sm" variant="outline"
                                                         leftIcon={<Share2 size={13} />}
                                                         onClick={() => {
                                                             const msg = generateReminder('You', settlement.from.name, settlement.amount / 100);
@@ -505,9 +512,9 @@ export default function SettlementsPage() {
                 {confirmSettle && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)' }}>
-                            <Avatar name={memberNames[confirmSettle.from] || 'User'} size="md" />
+                            <Avatar name={memberNames[confirmSettle.from] || 'User'} image={memberImages[confirmSettle.from]} size="md" />
                             <ArrowRightLeft size={20} style={{ color: 'var(--fg-muted)' }} />
-                            <Avatar name={memberNames[confirmSettle.to] || 'User'} size="md" />
+                            <Avatar name={memberNames[confirmSettle.to] || 'User'} image={memberImages[confirmSettle.to]} size="md" />
                         </div>
                         <p style={{ color: 'var(--fg-secondary)', fontSize: 'var(--text-sm)' }}>
                             Mark <strong>{formatCurrency(confirmSettle.amount)}</strong> from{' '}

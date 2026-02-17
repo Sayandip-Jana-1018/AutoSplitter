@@ -1,52 +1,96 @@
 'use client';
 
-import { useRef, useState, ReactNode, CSSProperties } from 'react';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { MouseEvent, useRef } from 'react';
+import { cn } from '@/lib/utils';
 
 interface TiltCardProps {
-    children: ReactNode;
+    children: React.ReactNode;
     className?: string;
-    style?: CSSProperties;
+    glare?: boolean;
     maxTilt?: number;
+    scale?: number;
 }
 
-/**
- * 3D tilt card — tracks mouse position to apply subtle rotateX/Y.
- * Uses CSS perspective transform, resets on mouse leave with smooth transition.
- */
-export default function TiltCard({ children, className, style, maxTilt = 4 }: TiltCardProps) {
+export default function TiltCard({
+    children,
+    className,
+    glare = true,
+    maxTilt = 8,
+    scale = 1.02,
+}: TiltCardProps) {
     const ref = useRef<HTMLDivElement>(null);
-    const [transform, setTransform] = useState('perspective(800px) rotateX(0deg) rotateY(0deg)');
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+
+    const mouseX = useSpring(x, { stiffness: 500, damping: 40 });
+    const mouseY = useSpring(y, { stiffness: 500, damping: 40 });
+
+    const rotateX = useTransform(mouseY, [-0.5, 0.5], [maxTilt, -maxTilt]);
+    const rotateY = useTransform(mouseX, [-0.5, 0.5], [-maxTilt, maxTilt]);
+
+    // Glare position
+    const glareX = useTransform(rotateY, [-maxTilt, maxTilt], [0, 100]);
+    const glareY = useTransform(rotateX, [maxTilt, -maxTilt], [0, 100]);
+    const glareOpacity = useTransform(mouseX, [-0.5, 0.5], [0, 0.4]); // Only visible on movement
+
+    const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
         if (!ref.current) return;
+
         const rect = ref.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const rotateX = ((y - centerY) / centerY) * -maxTilt;
-        const rotateY = ((x - centerX) / centerX) * maxTilt;
-        setTransform(`perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`);
+        const width = rect.width;
+        const height = rect.height;
+
+        const mouseXRel = (e.clientX - rect.left) / width - 0.5;
+        const mouseYRel = (e.clientY - rect.top) / height - 0.5;
+
+        x.set(mouseXRel);
+        y.set(mouseYRel);
     };
 
     const handleMouseLeave = () => {
-        setTransform('perspective(800px) rotateX(0deg) rotateY(0deg)');
+        x.set(0);
+        y.set(0);
     };
 
     return (
-        <div
+        <motion.div
             ref={ref}
-            className={className}
+            className={cn('relative', className)}
+            style={{
+                perspective: 1000,
+            }}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
-            style={{
-                ...style,
-                transform,
-                transition: 'transform 0.15s ease-out',
-                willChange: 'transform',
-            }}
+            whileHover={{ scale }}
         >
-            {children}
-        </div>
+            <motion.div
+                style={{
+                    rotateX,
+                    rotateY,
+                    transformStyle: 'preserve-3d',
+                }}
+                className="w-full h-full relative"
+            >
+                {children}
+
+                {/* Glare Effect */}
+                {glare && (
+                    <div
+                        className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none z-10"
+                        style={{ transform: 'translateZ(1px)' }} // Lift slightly above content
+                    >
+                        <motion.div
+                            className="absolute inset-0 bg-gradient-to-tr from-transparent via-white to-transparent opacity-0 mix-blend-overlay"
+                            style={{
+                                opacity: glareOpacity,
+                                background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.8) 0%, transparent 60%)`,
+                            }}
+                        />
+                    </div>
+                )}
+            </motion.div>
+        </motion.div>
     );
 }

@@ -30,6 +30,7 @@
     border: 1.5px solid var(--border-default);
     border-radius: var(--radius-lg, 12px);
     outline: none;
+    text-align: center;
     transition:
         border-color 0.25s ease,
         box-shadow 0.25s ease,
@@ -38,6 +39,7 @@
 
 .input::placeholder {
     color: var(--fg-muted);
+    text-align: center;
 }
 
 /* ── Premium Focus Glow ── */
@@ -118,4 +120,59 @@
 .textarea {
     min-height: 100px;
     resize: vertical;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Floating Label — Material Design Style
+   ═══════════════════════════════════════════════════════════════ */
+
+.floatingContainer {
+    position: relative;
+}
+
+.floatingInput {
+    padding-top: 20px;
+    padding-bottom: 6px;
+    text-align: left;
+}
+
+.floatingInput::placeholder {
+    color: transparent;
+    text-align: left;
+}
+
+.floatingLabel {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--weight-medium, 500);
+    color: var(--fg-muted);
+    pointer-events: none;
+    transition:
+        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        font-size 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        color 0.25s ease,
+        top 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: left center;
+    z-index: 2;
+    background: transparent;
+}
+
+.floatingLabelActive {
+    top: 10px;
+    transform: translateY(0);
+    font-size: var(--text-xs, 11px);
+    color: var(--accent-500);
+    font-weight: var(--weight-semibold, 600);
+}
+
+.floatingLabelWithIcon {
+    left: 40px;
+}
+
+.floatingInputActive {
+    padding-top: 22px;
+    padding-bottom: 6px;
 }

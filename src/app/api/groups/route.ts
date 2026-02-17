@@ -61,6 +61,14 @@ export async function POST(req: Request) {
                 members: {
                     create: { userId: user.id, role: 'admin' },
                 },
+                // Auto-create a default trip so expenses can be added immediately
+                trips: {
+                    create: {
+                        title: parsed.data.name,
+                        isActive: true,
+                        currency: 'INR',
+                    },
+                },
             },
         });
 

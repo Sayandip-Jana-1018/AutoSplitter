@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import { forwardRef, InputHTMLAttributes, TextareaHTMLAttributes, useState } from 'react';
 import styles from './input.module.css';
 import { cn } from '@/lib/utils';
 
@@ -11,26 +11,47 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     rightIcon?: React.ReactNode;
     large?: boolean;
     wrapperClassName?: string;
+    floating?: boolean;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-    ({ label, error, leftIcon, rightIcon, large, className, wrapperClassName, ...props }, ref) => {
+    ({ label, error, leftIcon, rightIcon, large, className, wrapperClassName, floating = false, ...props }, ref) => {
+        const [focused, setFocused] = useState(false);
+        const hasValue = !!props.value || !!props.defaultValue;
+        const isFloating = floating && label;
+
         return (
             <div className={cn(styles.wrapper, error && styles.error, wrapperClassName)}>
-                {label && <label className={styles.label}>{label}</label>}
-                <div className={styles.inputContainer}>
+                {label && !isFloating && <label className={styles.label}>{label}</label>}
+                <div className={cn(styles.inputContainer, isFloating && styles.floatingContainer)}>
                     {leftIcon && <span className={styles.leftIcon}>{leftIcon}</span>}
                     <input
                         ref={ref}
                         className={cn(
                             styles.input,
                             large && styles.inputLarge,
-                            leftIcon && styles.hasLeftIcon,
-                            rightIcon && styles.hasRightIcon,
+                            leftIcon ? styles.hasLeftIcon : undefined,
+                            rightIcon ? styles.hasRightIcon : undefined,
+                            isFloating ? styles.floatingInput : undefined,
+                            isFloating && (focused || hasValue) ? styles.floatingInputActive : undefined,
                             className
                         )}
+                        onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+                        onBlur={(e) => { setFocused(false); props.onBlur?.(e); }}
+                        placeholder={isFloating ? ' ' : props.placeholder}
                         {...props}
                     />
+                    {isFloating && (
+                        <label
+                            className={cn(
+                                styles.floatingLabel,
+                                (focused || hasValue) ? styles.floatingLabelActive : undefined,
+                                leftIcon ? styles.floatingLabelWithIcon : undefined
+                            )}
+                        >
+                            {label}
+                        </label>
+                    )}
                     {rightIcon && <span className={styles.rightIcon}>{rightIcon}</span>}
                 </div>
                 {error && <span className={styles.errorText}>{error}</span>}

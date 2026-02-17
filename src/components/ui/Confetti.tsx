@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useHaptics } from '@/hooks/useHaptics';
 
 interface ConfettiProps {
     active: boolean;
     duration?: number;
+    message?: string;
+    onComplete?: () => void;
 }
 
 interface Particle {
@@ -25,10 +29,12 @@ const COLORS = [
     '#3b82f6', '#22c55e',
 ];
 
-export default function Confetti({ active, duration = 3000 }: ConfettiProps) {
+export default function Confetti({ active, duration = 3500, message, onComplete }: ConfettiProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const particlesRef = useRef<Particle[]>([]);
     const rafRef = useRef<number>(0);
+    const [showMessage, setShowMessage] = useState(false);
+    const haptics = useHaptics();
 
     const createParticles = useCallback(() => {
         const particles: Particle[] = [];
@@ -61,10 +67,16 @@ export default function Confetti({ active, duration = 3000 }: ConfettiProps) {
         particlesRef.current = createParticles();
         const startTime = Date.now();
 
+        // Haptic and message
+        haptics.success();
+        if (message) setShowMessage(true);
+
         const animate = () => {
             const elapsed = Date.now() - startTime;
             if (elapsed > duration) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                setShowMessage(false);
+                onComplete?.();
                 return;
             }
 
@@ -73,7 +85,7 @@ export default function Confetti({ active, duration = 3000 }: ConfettiProps) {
             particlesRef.current.forEach((p) => {
                 p.x += p.vx;
                 p.y += p.vy;
-                p.vy += 0.1; // gravity
+                p.vy += 0.1;
                 p.rotation += p.rotationSpeed;
                 p.opacity = Math.max(0, 1 - elapsed / duration);
 
@@ -99,14 +111,53 @@ export default function Confetti({ active, duration = 3000 }: ConfettiProps) {
     if (!active) return null;
 
     return (
-        <canvas
-            ref={canvasRef}
-            style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 9999,
-                pointerEvents: 'none',
-            }}
-        />
+        <>
+            <canvas
+                ref={canvasRef}
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 9999,
+                    pointerEvents: 'none',
+                }}
+            />
+            {/* Celebration message overlay */}
+            <AnimatePresence>
+                {showMessage && message && (
+                    <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.8, opacity: 0 }}
+                        transition={{ type: 'spring', damping: 12, delay: 0.15 }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 10000,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        <div style={{
+                            background: 'var(--bg-glass)',
+                            backdropFilter: 'blur(24px) saturate(1.5)',
+                            WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+                            border: '1px solid var(--border-glass)',
+                            borderRadius: 'var(--radius-2xl)',
+                            padding: 'var(--space-5) var(--space-8)',
+                            boxShadow: 'var(--shadow-card), 0 0 40px rgba(var(--accent-500-rgb), 0.15)',
+                            textAlign: 'center',
+                        }}>
+                            <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
+                            <div style={{
+                                fontWeight: 800, fontSize: 'var(--text-lg)',
+                                background: 'linear-gradient(135deg, var(--accent-400), var(--accent-500))',
+                                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                                backgroundClip: 'text',
+                            }}>
+                                {message}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
     );
 }

@@ -91,43 +91,11 @@ export default function AnalyticsPage() {
     const totalSpent = transactions.reduce((s, t) => s + t.amount, 0);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }} suppressHydrationWarning>
             {/* ═══ HEADER ═══ */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
-                    <button
-                        onClick={() => router.back()}
-                        style={{
-                            width: 36, height: 36, borderRadius: 'var(--radius-lg)',
-                            ...glass, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', color: 'var(--fg-secondary)', marginTop: 2,
-                        }}
-                    >
-                        <ArrowLeft size={16} />
-                    </button>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                            <BarChart3 size={14} style={{ color: 'var(--accent-400)' }} />
-                            <span style={{
-                                fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)',
-                                fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-                            }}>
-                                Insights
-                            </span>
-                        </div>
-                        <h2 style={{
-                            fontSize: 'var(--text-xl)', fontWeight: 800,
-                            background: 'linear-gradient(135deg, var(--fg-primary), var(--accent-400))',
-                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                        }}>
-                            Analytics
-                        </h2>
-                        <p style={{ color: 'var(--fg-tertiary)', fontSize: 'var(--text-xs)', marginTop: 2 }}>
-                            Spending breakdown from your transactions
-                        </p>
-                    </div>
-                </div>
-            </motion.div>
+            <p style={{ color: 'var(--fg-tertiary)', fontSize: 'var(--text-xs)' }} suppressHydrationWarning>
+                Spending breakdown from your transactions
+            </p>
 
             {loading ? (
                 <div style={{

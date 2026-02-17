@@ -97,14 +97,24 @@ export default function GroupDetailPage() {
     const [tripStart, setTripStart] = useState('');
     const [tripEnd, setTripEnd] = useState('');
     const [creatingTrip, setCreatingTrip] = useState(false);
+    const [suggestedSettlements, setSuggestedSettlements] = useState<
+        { from: string; fromName: string; to: string; toName: string; amount: number }[]
+    >([]);
     const { toast } = useToast();
 
     const fetchGroup = useCallback(async () => {
         try {
-            const res = await fetch(`/api/groups/${groupId}`);
-            if (res.ok) {
-                const data = await res.json();
+            const [groupRes, balancesRes] = await Promise.all([
+                fetch(`/api/groups/${groupId}`),
+                fetch(`/api/groups/${groupId}/balances`),
+            ]);
+            if (groupRes.ok) {
+                const data = await groupRes.json();
                 setGroup(data);
+            }
+            if (balancesRes.ok) {
+                const bData = await balancesRes.json();
+                setSuggestedSettlements(bData.settlements || []);
             }
         } catch (err) {
             console.error('Failed to fetch group:', err);
@@ -280,7 +290,7 @@ export default function GroupDetailPage() {
                                     return (
                                         <Card key={member.userId} padding="compact">
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                                                <Avatar name={member.user.name || 'User'} size="sm" />
+                                                <Avatar name={member.user.name || 'User'} image={member.user.image} size="sm" />
                                                 <span style={{ flex: 1, fontSize: 'var(--text-sm)', fontWeight: 500 }}>
                                                     {member.user.name || 'User'}
                                                     {isCurrentUser && <span style={{ color: 'var(--fg-tertiary)' }}> (You)</span>}
@@ -305,6 +315,54 @@ export default function GroupDetailPage() {
                                 })}
                             </div>
                         </div>
+
+                        {/* Simplify Debts — Suggested Settlements */}
+                        {suggestedSettlements.length > 0 && (
+                            <div>
+                                <h3 style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-2)', color: 'var(--fg-secondary)' }}>
+                                    ⚡ Simplify Debts
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                    {suggestedSettlements.map((s, i) => (
+                                        <motion.div
+                                            key={`${s.from}-${s.to}`}
+                                            initial={{ opacity: 0, x: -12 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.08 }}
+                                        >
+                                            <Card padding="compact">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                                                    <div style={{
+                                                        width: 32, height: 32, borderRadius: 'var(--radius-full)',
+                                                        background: 'rgba(var(--accent-500-rgb), 0.08)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        color: 'var(--accent-500)', fontSize: 14, flexShrink: 0,
+                                                    }}>
+                                                        <ArrowRightLeft size={15} />
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500 }}>
+                                                            <span style={{ fontWeight: 600 }}>{s.fromName}</span>
+                                                            <span style={{ color: 'var(--fg-tertiary)', margin: '0 4px' }}>→</span>
+                                                            <span style={{ fontWeight: 600 }}>{s.toName}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)' }}>
+                                                            Suggested transfer
+                                                        </div>
+                                                    </div>
+                                                    <span style={{
+                                                        fontWeight: 700, fontSize: 'var(--text-sm)',
+                                                        color: 'var(--accent-500)',
+                                                    }}>
+                                                        {formatCurrency(s.amount)}
+                                                    </span>
+                                                </div>
+                                            </Card>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Recent Transactions */}
                         <div>
@@ -373,7 +431,7 @@ export default function GroupDetailPage() {
                                 >
                                     <Card padding="normal">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                                            <Avatar name={member.user.name || 'User'} size="md" />
+                                            <Avatar name={member.user.name || 'User'} image={member.user.image} size="md" />
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
                                                     {member.user.name || 'User'}
@@ -475,13 +533,40 @@ export default function GroupDetailPage() {
                         }}>
                             {`${typeof window !== 'undefined' ? window.location.origin : ''}/join/${group.inviteCode}`}
                         </span>
-                        <Button size="sm" variant={copied ? 'ghost' : 'primary'} iconOnly onClick={handleCopy}>
-                            {copied ? <Check size={16} /> : <Copy size={16} />}
+                        <Button size="sm" variant={copied ? 'ghost' : 'primary'} onClick={handleCopy}>
+                            {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
                         </Button>
                     </div>
-                    <Button fullWidth variant="secondary" leftIcon={<Share2 size={16} />}>
+                    <Button fullWidth variant="secondary" leftIcon={<Share2 size={16} />}
+                        onClick={() => {
+                            const link = `${window.location.origin}/join/${group.inviteCode}`;
+                            const msg = encodeURIComponent(`Hey! Join our group "${group.name}" on AutoSplit to split expenses. Click here: ${link}`);
+                            window.open(`https://wa.me/?text=${msg}`, '_blank');
+                        }}
+                    >
                         Share via WhatsApp
                     </Button>
+                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                        <Button fullWidth variant="ghost" size="sm"
+                            onClick={() => {
+                                const link = `${window.location.origin}/join/${group.inviteCode}`;
+                                const msg = encodeURIComponent(`Hey! Join our group "${group.name}" on AutoSplit: ${link}`);
+                                window.open(`sms:?body=${msg}`, '_blank');
+                            }}
+                        >
+                            📱 SMS
+                        </Button>
+                        <Button fullWidth variant="ghost" size="sm"
+                            onClick={() => {
+                                const link = `${window.location.origin}/join/${group.inviteCode}`;
+                                const subject = encodeURIComponent(`Join ${group.name} on AutoSplit`);
+                                const body = encodeURIComponent(`Hey! Join our group "${group.name}" on AutoSplit to split expenses.\n\nClick here: ${link}`);
+                                window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+                            }}
+                        >
+                            📧 Email
+                        </Button>
+                    </div>
                 </div>
             </Modal>
 

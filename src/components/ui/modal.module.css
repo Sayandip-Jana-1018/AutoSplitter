@@ -1,12 +1,15 @@
 .overlay {
     position: fixed;
     inset: 0;
-    background: var(--bg-overlay);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: var(--z-modal-backdrop);
     padding: var(--space-4);
+    overflow-y: auto;
 }
 
 .modal {
@@ -78,4 +81,16 @@
     align-items: center;
     justify-content: flex-end;
     gap: var(--space-3);
+}
+
+/* Mobile centering fix */
+@media (max-width: 480px) {
+    .overlay {
+        padding: var(--space-3);
+    }
+
+    .modal {
+        max-height: 85vh;
+        margin: auto;
+    }
 }

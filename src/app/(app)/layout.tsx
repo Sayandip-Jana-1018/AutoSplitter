@@ -12,38 +12,61 @@ import {
     Plus,
     Menu,
     LogOut,
-    ChevronRight,
+    X,
     BarChart3,
+    Sparkles,
+    Contact,
 } from 'lucide-react';
 import ClipboardBanner from '@/components/features/ClipboardBanner';
+import NotificationBanner from '@/components/features/NotificationBanner';
 import ThemeSelector from '@/components/features/ThemeSelector';
 import Avatar from '@/components/ui/Avatar';
 import OfflineIndicator from '@/components/ui/OfflineIndicator';
 import OnboardingTour from '@/components/features/OnboardingTour';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import GlobalSearch from '@/components/ui/GlobalSearch';
+import { signOut } from 'next-auth/react';
 import styles from './app.module.css';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-    { href: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-    { href: '/groups', icon: <Users size={20} />, label: 'Groups' },
-    { href: '/transactions', icon: <Receipt size={20} />, label: 'Transactions' },
-    { href: '/settlements', icon: <ArrowRightLeft size={20} />, label: 'Settlements' },
-    { href: '/analytics', icon: <BarChart3 size={20} />, label: 'Analytics' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', emoji: '🏠' },
+    { href: '/groups', icon: Users, label: 'Groups', emoji: '👥' },
+    { href: '/contacts', icon: Contact, label: 'Contacts', emoji: '📇' },
+    { href: '/transactions', icon: Receipt, label: 'Transactions', emoji: '💸' },
+    { href: '/settlements', icon: ArrowRightLeft, label: 'Settlements', emoji: '🤝' },
+    { href: '/analytics', icon: BarChart3, label: 'Analytics', emoji: '📊' },
+    { href: '/settings', icon: Settings, label: 'Settings', emoji: '⚙️' },
 ];
 
 const BOTTOM_NAV = [
-    { href: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Home' },
-    { href: '/groups', icon: <Users size={20} />, label: 'Groups' },
-    { href: '/transactions', icon: <Receipt size={20} />, label: 'Activity' },
-    { href: '/settlements', icon: <ArrowRightLeft size={20} />, label: 'Settle' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
+    { href: '/groups', icon: Users, label: 'Groups' },
+    { href: '/contacts', icon: Contact, label: 'Contacts' },
+    { href: '/transactions', icon: Receipt, label: 'Activity' },
+    { href: '/settlements', icon: ArrowRightLeft, label: 'Settle' },
 ];
 
-// Placeholder user for now (will come from session)
-const MOCK_USER = {
-    name: 'Sayan Das',
-    email: 'sayan@example.com',
+/* ── Animation variants ── */
+const sidebarVariants = {
+    closed: { x: '-100%', transition: { type: 'spring' as const, damping: 30, stiffness: 300 } },
+    open: { x: 0, transition: { type: 'spring' as const, damping: 26, stiffness: 200, when: 'beforeChildren' as const, staggerChildren: 0.04 } },
+};
+
+const overlayVariants = {
+    closed: { opacity: 0 },
+    open: { opacity: 1 },
+};
+
+const navItemVariants = {
+    closed: { x: -20, opacity: 0 },
+    open: { x: 0, opacity: 1, transition: { type: 'spring' as const, damping: 20, stiffness: 200 } },
+};
+
+const footerVariants = {
+    closed: { y: 20, opacity: 0 },
+    open: { y: 0, opacity: 1, transition: { type: 'spring' as const, damping: 20, stiffness: 200, delay: 0.2 } },
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -51,111 +74,222 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const haptics = useHaptics();
+    const { user } = useCurrentUser();
 
     const pageTitle = NAV_ITEMS.find((item) => pathname.startsWith(item.href))?.label || 'Dashboard';
+
+    const navigateTo = (href: string) => {
+        haptics.light();
+        router.push(href);
+        setSidebarOpen(false);
+    };
 
     return (
         <div className={styles.appShell}>
             <OfflineIndicator />
             <OnboardingTour />
-            {/* ── Mobile Sidebar Overlay ── */}
+
+            {/* ── Animated Sidebar Overlay ── */}
             <AnimatePresence>
                 {sidebarOpen && (
                     <motion.div
                         className={styles.sidebarOverlay}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        variants={overlayVariants}
+                        initial="closed"
+                        animate="open"
+                        exit="closed"
                         onClick={() => setSidebarOpen(false)}
                     />
                 )}
             </AnimatePresence>
 
-            {/* ── Sidebar ── */}
-            <aside className={cn(styles.sidebar, sidebarOpen && styles.sidebarOpen)}>
+            {/* ── Premium Sidebar ── */}
+            <AnimatePresence>
+                {sidebarOpen && (
+                    <motion.aside
+                        className={styles.sidebar}
+                        variants={sidebarVariants}
+                        initial="closed"
+                        animate="open"
+                        exit="closed"
+                        style={{ transform: 'none' }} // let framer handle it
+                    >
+                        {/* Gradient mesh background */}
+                        <div className={styles.sidebarMesh} />
+
+                        {/* Header */}
+                        <motion.div className={styles.sidebarLogo} variants={navItemVariants}>
+                            <div className={styles.sidebarLogoIcon}>⚡</div>
+                            <span className="gradient-text-animated" style={{ fontWeight: 800, fontSize: 20 }}>AutoSplit</span>
+                            <motion.button
+                                className={styles.sidebarClose}
+                                onClick={() => setSidebarOpen(false)}
+                                whileTap={{ scale: 0.85, rotate: -90 }}
+                                whileHover={{ scale: 1.1 }}
+                            >
+                                <X size={18} />
+                            </motion.button>
+                        </motion.div>
+
+                        {/* Navigation */}
+                        <nav className={styles.sidebarNav}>
+                            <motion.span className={styles.sidebarSection} variants={navItemVariants}>
+                                <Sparkles size={12} style={{ opacity: 0.5 }} /> Navigation
+                            </motion.span>
+                            {NAV_ITEMS.map((item) => {
+                                const isActive = pathname.startsWith(item.href);
+                                const Icon = item.icon;
+                                return (
+                                    <motion.button
+                                        key={item.href}
+                                        className={cn(styles.navItem, isActive && styles.navItemActive)}
+                                        onClick={() => navigateTo(item.href)}
+                                        variants={navItemVariants}
+                                        whileTap={{ scale: 0.97 }}
+                                        whileHover={{ x: 4 }}
+                                    >
+                                        <motion.span
+                                            className={styles.navItemIcon}
+                                            animate={isActive ? { scale: [1, 1.2, 0.95, 1.05, 1] } : { scale: 1 }}
+                                            transition={isActive ? { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] } : {}}
+                                        >
+                                            <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
+                                        </motion.span>
+                                        <span className={styles.navItemLabel}>{item.label}</span>
+                                        {isActive && (
+                                            <motion.div
+                                                className={styles.navItemActiveGlow}
+                                                layoutId="sidebarActiveGlow"
+                                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                            />
+                                        )}
+                                    </motion.button>
+                                );
+                            })}
+                        </nav>
+
+                        {/* Footer with user card */}
+                        <motion.div className={styles.sidebarFooter} variants={footerVariants}>
+                            <div className={styles.userCard}>
+                                <div className={styles.userAvatarWrap}>
+                                    <Avatar name={user?.name || 'User'} image={user?.image} size="sm" />
+                                    <span className={styles.userOnlineDot} />
+                                </div>
+                                <div className={styles.userInfo}>
+                                    <div className={styles.userName}>{user?.name || 'User'}</div>
+                                    <div className={styles.userEmail}>{user?.email || ''}</div>
+                                </div>
+                            </div>
+                            <motion.button
+                                className={styles.signOutBtn}
+                                onClick={() => signOut({ callbackUrl: '/login' })}
+                                whileTap={{ scale: 0.96 }}
+                                whileHover={{ x: 2 }}
+                            >
+                                <LogOut size={16} />
+                                Sign Out
+                            </motion.button>
+                        </motion.div>
+                    </motion.aside>
+                )}
+            </AnimatePresence>
+
+            {/* ── Desktop Sidebar (always visible on 1024px+) ── */}
+            <aside className={cn(styles.sidebar, styles.desktopSidebar)}>
+                <div className={styles.sidebarMesh} />
                 <div className={styles.sidebarLogo}>
                     <div className={styles.sidebarLogoIcon}>⚡</div>
-                    AutoSplit
+                    <span className="gradient-text-animated" style={{ fontWeight: 800, fontSize: 20 }}>AutoSplit</span>
                 </div>
-
                 <nav className={styles.sidebarNav}>
-                    <span className={styles.sidebarSection}>Menu</span>
-                    {NAV_ITEMS.map((item) => (
-                        <button
-                            key={item.href}
-                            className={cn(
-                                styles.navItem,
-                                pathname.startsWith(item.href) && styles.navItemActive
-                            )}
-                            onClick={() => {
-                                router.push(item.href);
-                                setSidebarOpen(false);
-                            }}
-                        >
-                            <span className={styles.navItemIcon}>{item.icon}</span>
-                            {item.label}
-                            {pathname.startsWith(item.href) && (
-                                <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.5 }} />
-                            )}
-                        </button>
-                    ))}
-
-                    <span className={styles.sidebarSection}>Settings</span>
-                    <button
-                        className={cn(
-                            styles.navItem,
-                            pathname === '/settings' && styles.navItemActive
-                        )}
-                        onClick={() => {
-                            router.push('/settings');
-                            setSidebarOpen(false);
-                        }}
-                    >
-                        <span className={styles.navItemIcon}><Settings size={20} /></span>
-                        Settings
-                    </button>
+                    <span className={styles.sidebarSection}>
+                        <Sparkles size={12} style={{ opacity: 0.5 }} /> Navigation
+                    </span>
+                    {NAV_ITEMS.map((item) => {
+                        const isActive = pathname.startsWith(item.href);
+                        const Icon = item.icon;
+                        return (
+                            <motion.button
+                                key={item.href}
+                                className={cn(styles.navItem, isActive && styles.navItemActive)}
+                                onClick={() => router.push(item.href)}
+                                whileTap={{ scale: 0.97 }}
+                                whileHover={{ x: 4 }}
+                            >
+                                <motion.span
+                                    className={styles.navItemIcon}
+                                    animate={isActive ? { scale: [1, 1.2, 0.95, 1.05, 1] } : { scale: 1 }}
+                                    transition={isActive ? { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] } : {}}
+                                >
+                                    <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
+                                </motion.span>
+                                <span className={styles.navItemLabel}>{item.label}</span>
+                                {isActive && (
+                                    <motion.div
+                                        className={styles.navItemActiveGlow}
+                                        layoutId="desktopActiveGlow"
+                                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                    />
+                                )}
+                            </motion.button>
+                        );
+                    })}
                 </nav>
-
                 <div className={styles.sidebarFooter}>
                     <div className={styles.userCard}>
-                        <Avatar name={MOCK_USER.name} size="sm" />
-                        <div>
-                            <div className={styles.userName}>{MOCK_USER.name}</div>
-                            <div className={styles.userEmail}>{MOCK_USER.email}</div>
+                        <div className={styles.userAvatarWrap}>
+                            <Avatar name={user?.name || 'User'} image={user?.image} size="sm" />
+                            <span className={styles.userOnlineDot} />
+                        </div>
+                        <div className={styles.userInfo}>
+                            <div className={styles.userName}>{user?.name || 'User'}</div>
+                            <div className={styles.userEmail}>{user?.email || ''}</div>
                         </div>
                     </div>
-                    <button
-                        className={styles.navItem}
-                        onClick={() => router.push('/login')}
-                        style={{ color: 'var(--color-error)' }}
+                    <motion.button
+                        className={styles.signOutBtn}
+                        onClick={() => signOut({ callbackUrl: '/login' })}
+                        whileTap={{ scale: 0.96 }}
                     >
-                        <span className={styles.navItemIcon}><LogOut size={18} /></span>
+                        <LogOut size={16} />
                         Sign Out
-                    </button>
+                    </motion.button>
                 </div>
             </aside>
 
             {/* ── Main Area ── */}
             <main className={styles.main}>
                 {/* Header */}
-                <header className={styles.header}>
+                <header className={styles.header} suppressHydrationWarning>
                     <div className={styles.headerLeft}>
-                        <button
+                        <motion.button
                             className={styles.menuBtn}
                             onClick={() => setSidebarOpen(true)}
                             aria-label="Open menu"
+                            whileTap={{ scale: 0.9 }}
                         >
                             <Menu size={22} />
-                        </button>
+                        </motion.button>
                         <h1 className={styles.headerTitle}>{pageTitle}</h1>
                     </div>
                     <div className={styles.headerRight}>
                         <GlobalSearch />
                         <ThemeSelector />
+                        <div
+                            onClick={() => router.push('/settings')}
+                            tabIndex={0}
+                            style={{ cursor: 'pointer', transition: 'transform 0.15s ease' }}
+                            onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.9)'; }}
+                            onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                            suppressHydrationWarning
+                        >
+                            <Avatar name={user?.name || 'User'} image={user?.image} size="sm" />
+                        </div>
                     </div>
                 </header>
 
-                {/* Page content with transition */}
+                {/* Page content */}
                 <motion.div
                     className={styles.pageContent}
                     key={pathname}
@@ -163,6 +297,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                 >
+                    <NotificationBanner />
                     <ClipboardBanner />
                     {children}
                 </motion.div>
@@ -179,25 +314,50 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Plus size={24} />
             </motion.button>
 
-            {/* ── Bottom Nav (mobile) ── */}
+            {/* ── Floating Bottom Nav (mobile) ── */}
             <nav className={styles.bottomNav}>
                 <div className={styles.bottomNavInner}>
-                    {BOTTOM_NAV.map((item) => (
-                        <button
-                            key={item.href}
-                            className={cn(
-                                styles.bottomNavItem,
-                                pathname.startsWith(item.href) && styles.bottomNavItemActive
-                            )}
-                            onClick={() => {
-                                haptics.light();
-                                router.push(item.href);
-                            }}
-                        >
-                            {item.icon}
-                            <span>{item.label}</span>
-                        </button>
-                    ))}
+                    {BOTTOM_NAV.map((item) => {
+                        const isActive = pathname.startsWith(item.href);
+                        const Icon = item.icon;
+                        return (
+                            <motion.button
+                                key={item.href}
+                                className={cn(
+                                    styles.bottomNavItem,
+                                    isActive && styles.bottomNavItemActive
+                                )}
+                                onClick={() => {
+                                    haptics.light();
+                                    router.push(item.href);
+                                }}
+                                whileTap={{ scale: 0.85 }}
+                            >
+                                <motion.div
+                                    className={styles.bottomNavIconWrap}
+                                    animate={isActive ? { y: -2, scale: 1.1 } : { y: 0, scale: 1 }}
+                                    transition={{ type: 'spring', damping: 18, stiffness: 350 }}
+                                >
+                                    <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+                                    {isActive && (
+                                        <motion.div
+                                            className={styles.bottomNavDot}
+                                            layoutId="bottomNavDot"
+                                            transition={{ type: 'spring', damping: 25, stiffness: 400 }}
+                                        />
+                                    )}
+                                </motion.div>
+                                <span className={styles.bottomNavLabel}>{item.label}</span>
+                                {isActive && (
+                                    <motion.div
+                                        className={styles.bottomNavActivePill}
+                                        layoutId="bottomNavActive"
+                                        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                                    />
+                                )}
+                            </motion.button>
+                        );
+                    })}
                 </div>
             </nav>
         </div>

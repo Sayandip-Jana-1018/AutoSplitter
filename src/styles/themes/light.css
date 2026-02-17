@@ -13,12 +13,12 @@
     --bg-tertiary: #e8ecf3;
     --bg-elevated: #ffffff;
     --bg-sunken: #e3e7ef;
-    --bg-overlay: rgba(15, 23, 42, 0.5);
+    --bg-overlay: rgba(15, 23, 42, 0.85);
 
     /* ── Glass — visible frosted glass with accent tint ── */
-    --bg-glass: rgba(255, 255, 255, 0.65);
-    --bg-glass-strong: rgba(255, 255, 255, 0.85);
-    --bg-glass-subtle: rgba(255, 255, 255, 0.45);
+    --bg-glass: rgba(255, 255, 255, 0.88);
+    --bg-glass-strong: rgba(255, 255, 255, 0.95);
+    --bg-glass-subtle: rgba(255, 255, 255, 0.7);
 
     /* ── Foregrounds (text) ── */
     --fg-primary: #0f172a;
@@ -39,7 +39,7 @@
     --surface-card: rgba(255, 255, 255, 0.75);
     --surface-card-hover: rgba(255, 255, 255, 0.95);
     --surface-panel: #ffffff;
-    --surface-popover: rgba(255, 255, 255, 0.96);
+    --surface-popover: #ffffff;
     --surface-input: #ffffff;
     --surface-input-hover: #f8fafc;
 

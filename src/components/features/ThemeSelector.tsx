@@ -356,12 +356,12 @@ export default function ThemeSelector() {
                                     bottom: 0,
                                     left: 0,
                                     right: 0,
-                                    maxHeight: '75vh',
-                                    overflowY: 'auto',
+                                    maxHeight: '70vh',
+                                    display: 'flex',
+                                    flexDirection: 'column',
                                     background: 'var(--bg-primary)',
                                     borderTop: '1px solid rgba(var(--accent-500-rgb), 0.12)',
                                     borderRadius: '24px 24px 0 0',
-                                    padding: '0 20px 32px',
                                     zIndex: 9999,
                                     boxShadow: '0 -12px 60px rgba(0,0,0,0.25), 0 -2px 16px rgba(var(--accent-500-rgb), 0.08)',
                                 }}
@@ -371,6 +371,7 @@ export default function ThemeSelector() {
                                     display: 'flex',
                                     justifyContent: 'center',
                                     padding: '12px 0 8px',
+                                    flexShrink: 0,
                                 }}>
                                     <div style={{
                                         width: 40,
@@ -384,6 +385,8 @@ export default function ThemeSelector() {
                                 <div style={{
                                     textAlign: 'center',
                                     marginBottom: 6,
+                                    flexShrink: 0,
+                                    padding: '0 20px',
                                 }}>
                                     <span style={{
                                         fontSize: 17,
@@ -406,14 +409,20 @@ export default function ThemeSelector() {
                                 {/* Gradient divider */}
                                 <div style={{
                                     height: 1,
-                                    margin: '10px 0 14px',
+                                    margin: '10px 20px 0',
+                                    flexShrink: 0,
                                     background: 'linear-gradient(90deg, transparent, rgba(var(--accent-500-rgb), 0.25), transparent)',
                                 }} />
 
-                                {paletteList}
-
-                                {/* Bottom safe area */}
-                                <div style={{ height: 8 }} />
+                                {/* Scrollable palette list */}
+                                <div style={{
+                                    overflowY: 'auto',
+                                    WebkitOverflowScrolling: 'touch',
+                                    flex: 1,
+                                    padding: '14px 20px 120px',
+                                }}>
+                                    {paletteList}
+                                </div>
                             </motion.div>
                         </>
                     )}

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, UserPlus, Link2, Copy, Check, Users, Inbox, ArrowRight, Sparkles } from 'lucide-react';
+import { Plus, UserPlus, Link2, Copy, Check, Users, Inbox, ArrowRight, Sparkles, Contact, LogIn } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
@@ -36,6 +37,7 @@ interface GroupData {
 }
 
 export default function GroupsPage() {
+    const router = useRouter();
     const [groups, setGroups] = useState<GroupData[]>([]);
     const [loading, setLoading] = useState(true);
     const [showCreate, setShowCreate] = useState(false);
@@ -44,6 +46,9 @@ export default function GroupsPage() {
     const [selectedEmoji, setSelectedEmoji] = useState('✈️');
     const [inviteLink, setInviteLink] = useState('');
     const [copied, setCopied] = useState(false);
+    const [showJoin, setShowJoin] = useState(false);
+    const [joinInput, setJoinInput] = useState('');
+    const [joining, setJoining] = useState(false);
     const { toast } = useToast();
 
     const fetchGroups = useCallback(async () => {
@@ -93,6 +98,38 @@ export default function GroupsPage() {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const handleJoin = async () => {
+        if (!joinInput.trim() || joining) return;
+        setJoining(true);
+        try {
+            // Parse invite code from URL or raw code
+            let code = joinInput.trim();
+            // Handle full URLs like http://localhost:3000/join/xyz or https://site.com/join/xyz
+            const urlMatch = code.match(/\/join\/([^/?#]+)/);
+            if (urlMatch) code = urlMatch[1];
+
+            const res = await fetch('/api/groups/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ inviteCode: code }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                toast(data.message === 'Already a member' ? 'You\'re already in this group!' : 'Joined group successfully! 🎉', 'success');
+                setShowJoin(false);
+                setJoinInput('');
+                fetchGroups();
+                if (data.groupId) router.push(`/groups/${data.groupId}`);
+            } else {
+                toast(data.error || 'Invalid invite link', 'error');
+            }
+        } catch {
+            toast('Network error — please try again', 'error');
+        } finally {
+            setJoining(false);
+        }
+    };
+
     if (loading) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', padding: 'var(--space-4) 0' }}>
@@ -116,50 +153,12 @@ export default function GroupsPage() {
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-            {/* ═══ HEADER — Gradient title + glass New Group button ═══ */}
-            <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-            >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                            <Sparkles size={14} style={{ color: 'var(--accent-400)' }} />
-                            <span style={{
-                                fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)',
-                                fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-                            }}>
-                                Groups
-                            </span>
-                        </div>
-                        <h2 style={{
-                            fontSize: 'var(--text-xl)', fontWeight: 800,
-                            background: 'linear-gradient(135deg, var(--fg-primary), var(--accent-400))',
-                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                        }}>
-                            Your Groups
-                        </h2>
-                        <p style={{ color: 'var(--fg-tertiary)', fontSize: 'var(--text-xs)', marginTop: 2 }}>
-                            {groups.length} group{groups.length !== 1 ? 's' : ''} · Split expenses together
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setShowCreate(true)}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '8px 14px', borderRadius: 'var(--radius-full)',
-                            background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
-                            border: 'none', color: 'white', fontSize: 'var(--text-xs)', fontWeight: 700,
-                            cursor: 'pointer', boxShadow: '0 4px 16px rgba(var(--accent-500-rgb), 0.3)',
-                            transition: 'all 0.2s',
-                        }}
-                    >
-                        <Plus size={14} /> New Group
-                    </button>
-                </div>
-            </motion.div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <p style={{ color: 'var(--fg-tertiary)', fontSize: 'var(--text-xs)' }}>
+                    {groups.length} group{groups.length !== 1 ? 's' : ''} · Split expenses together
+                </p>
+            </div>
 
             {/* ═══ GROUP CARDS — Glassmorphic with emoji hero ═══ */}
             {groups.length === 0 ? (
@@ -180,16 +179,21 @@ export default function GroupsPage() {
                             </div>
                             <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: 4 }}>No groups yet</h3>
                             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-tertiary)', marginBottom: 'var(--space-5)' }}>
-                                Create your first group to start splitting
+                                Create a group or join one with an invite link
                             </p>
-                            <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setShowCreate(true)}
-                                style={{
-                                    background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
-                                    boxShadow: '0 4px 20px rgba(var(--accent-500-rgb), 0.3)',
-                                }}
-                            >
-                                Create Group
-                            </Button>
+                            <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
+                                <Button size="sm" variant="outline" leftIcon={<LogIn size={14} />} onClick={() => setShowJoin(true)}>
+                                    Join Group
+                                </Button>
+                                <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setShowCreate(true)}
+                                    style={{
+                                        background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
+                                        boxShadow: '0 4px 20px rgba(var(--accent-500-rgb), 0.3)',
+                                    }}
+                                >
+                                    Create Group
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </motion.div>
@@ -273,6 +277,23 @@ export default function GroupsPage() {
                             </div>
                         </motion.a>
                     ))}
+                </div>
+            )}
+
+            {/* ═══ JOIN / CREATE BUTTONS — Only when groups exist ═══ */}
+            {groups.length > 0 && (
+                <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', padding: 'var(--space-2) 0' }}>
+                    <Button size="sm" variant="outline" leftIcon={<LogIn size={14} />} onClick={() => setShowJoin(true)}>
+                        Join Group
+                    </Button>
+                    <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setShowCreate(true)}
+                        style={{
+                            background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
+                            boxShadow: '0 4px 20px rgba(var(--accent-500-rgb), 0.3)',
+                        }}
+                    >
+                        Create Group
+                    </Button>
                 </div>
             )}
 
@@ -369,7 +390,7 @@ export default function GroupsPage() {
                                 display: 'flex', gap: 'var(--space-2)',
                                 background: 'var(--bg-glass)', backdropFilter: 'blur(12px)',
                                 WebkitBackdropFilter: 'blur(12px)',
-                                padding: 'var(--space-2) var(--space-3)',
+                                padding: 'var(--space-3)',
                                 borderRadius: 'var(--radius-xl)',
                                 border: '1px solid var(--border-glass)',
                                 alignItems: 'center',
@@ -378,12 +399,15 @@ export default function GroupsPage() {
                                 <span style={{
                                     flex: 1, fontSize: 'var(--text-xs)',
                                     color: 'var(--fg-primary)',
-                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                    wordBreak: 'break-all',
+                                    textAlign: 'left',
+                                    lineHeight: 1.4,
+                                    fontFamily: 'var(--font-mono, monospace)',
                                 }}>
                                     {inviteLink}
                                 </span>
-                                <Button size="sm" variant={copied ? 'ghost' : 'primary'} iconOnly onClick={handleCopy}>
-                                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                                <Button size="sm" variant={copied ? 'ghost' : 'outline'} onClick={handleCopy} leftIcon={copied ? <Check size={14} /> : <Copy size={14} />}>
+                                    {copied ? 'Copied!' : 'Copy'}
                                 </Button>
                             </div>
 
@@ -394,6 +418,15 @@ export default function GroupsPage() {
                                     Done
                                 </Button>
                                 <Button fullWidth leftIcon={<UserPlus size={14} />}
+                                    onClick={async () => {
+                                        if (navigator.share) {
+                                            try {
+                                                await navigator.share({ title: 'Join my group on AutoSplit', text: 'Join my expense-splitting group!', url: inviteLink });
+                                            } catch { /* user cancelled */ }
+                                        } else {
+                                            handleCopy();
+                                        }
+                                    }}
                                     style={{
                                         background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
                                         boxShadow: '0 4px 20px rgba(var(--accent-500-rgb), 0.3)',
@@ -402,9 +435,65 @@ export default function GroupsPage() {
                                     Share
                                 </Button>
                             </div>
+
+                            {/* Add from Contacts */}
+                            <button
+                                onClick={() => router.push('/contacts')}
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    gap: 8, width: '100%', padding: '10px',
+                                    borderRadius: 'var(--radius-lg)', border: '1.5px dashed var(--border-glass)',
+                                    background: 'transparent', color: 'var(--fg-secondary)',
+                                    fontSize: 'var(--text-xs)', fontWeight: 600, cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.borderColor = 'rgba(var(--accent-500-rgb), 0.3)';
+                                    e.currentTarget.style.color = 'var(--accent-400)';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.borderColor = 'var(--border-glass)';
+                                    e.currentTarget.style.color = 'var(--fg-secondary)';
+                                }}
+                            >
+                                <Contact size={14} /> Add from Contacts
+                            </button>
                         </motion.div>
                     )}
                 </AnimatePresence>
+            </Modal>
+
+            {/* ═══ JOIN GROUP MODAL ═══ */}
+            <Modal
+                isOpen={showJoin}
+                onClose={() => { setShowJoin(false); setJoinInput(''); }}
+                title="Join a Group"
+                size="small"
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                    <p style={{ color: 'var(--fg-tertiary)', fontSize: 'var(--text-sm)' }}>
+                        Paste the invite link or code shared by your group admin
+                    </p>
+                    <Input
+                        label="Invite Link or Code"
+                        placeholder="e.g. https://...join/abc123 or abc123"
+                        value={joinInput}
+                        onChange={(e) => setJoinInput(e.target.value)}
+                        leftIcon={<Link2 size={18} />}
+                    />
+                    <Button
+                        fullWidth size="lg"
+                        disabled={!joinInput.trim()}
+                        onClick={handleJoin}
+                        leftIcon={<LogIn size={16} />}
+                        style={{
+                            background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
+                            boxShadow: '0 4px 20px rgba(var(--accent-500-rgb), 0.3)',
+                        }}
+                    >
+                        {joining ? 'Joining...' : 'Join Group'}
+                    </Button>
+                </div>
             </Modal>
         </div>
     );

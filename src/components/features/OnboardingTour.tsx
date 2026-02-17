@@ -36,6 +36,36 @@ const TOUR_STEPS: TourStep[] = [
         description: 'Add expenses, scan receipts, or settle up — all from the dashboard.',
         position: 'top',
     },
+    {
+        target: '[aria-label="Add expense"]',
+        title: '📸 Receipt Scanner',
+        description: 'Tap the + button and scan any UPI receipt, GPay screenshot, or bill. AI extracts amounts, merchants & payment methods automatically.',
+        position: 'top',
+    },
+    {
+        target: '[href="/transactions"]',
+        title: '📅 Activity Timeline',
+        description: 'Toggle between list and timeline views. The timeline groups your expenses by day with a beautiful vertical feed.',
+        position: 'right',
+    },
+    {
+        target: '[href="/groups"]',
+        title: '⚡ Simplify Debts',
+        description: 'Groups now show a "Simplify Debts" section — an algorithm finds the minimum transfers needed to settle all balances.',
+        position: 'right',
+    },
+    {
+        target: '[href="/settlements"]',
+        title: '🔔 Smart Notifications',
+        description: 'A notification banner shows pending settlements. One tap takes you to the settle-up page.',
+        position: 'right',
+    },
+    {
+        target: '[href="/dashboard"]',
+        title: '🔄 Pull to Refresh',
+        description: 'Swipe down on the dashboard to refresh all your data with a smooth animation. Works on mobile!',
+        position: 'right',
+    },
 ];
 
 const STORAGE_KEY = 'autosplit-tour-seen';
@@ -44,7 +74,7 @@ export default function OnboardingTour() {
     const [active, setActive] = useState(false);
     const [step, setStep] = useState(0);
     const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
-    const timerRef = useRef<number>();
+    const timerRef = useRef<number>(undefined);
 
     // Check if tour has been seen
     useEffect(() => {
@@ -111,37 +141,75 @@ export default function OnboardingTour() {
     const currentStep = TOUR_STEPS[step];
     const isLast = step === TOUR_STEPS.length - 1;
 
-    // Tooltip position relative to spotlight
+    // Tooltip position relative to spotlight — always clamped to viewport
     const getTooltipStyle = (): React.CSSProperties => {
+        const tooltipW = Math.min(280, window.innerWidth - 32);
+        const tooltipH = 160; // estimated tooltip height
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const pad = 12;
+        const edgePad = 16;
+
         if (!spotlightRect) {
-            return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+            return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: tooltipW };
         }
+
+        const centerX = spotlightRect.left + spotlightRect.width / 2;
+        const clampLeft = (x: number) => Math.max(edgePad, Math.min(x, vw - tooltipW - edgePad));
+
+        // Try preferred position, fall back if it won't fit
         const pos = currentStep.position || 'bottom';
-        const pad = 16;
-        switch (pos) {
-            case 'bottom':
-                return {
-                    top: spotlightRect.bottom + pad,
-                    left: Math.max(16, Math.min(spotlightRect.left + spotlightRect.width / 2 - 150, window.innerWidth - 316)),
-                };
-            case 'top':
-                return {
-                    bottom: window.innerHeight - spotlightRect.top + pad,
-                    left: Math.max(16, Math.min(spotlightRect.left + spotlightRect.width / 2 - 150, window.innerWidth - 316)),
-                };
-            case 'left':
-                return {
-                    top: spotlightRect.top,
-                    right: window.innerWidth - spotlightRect.left + pad,
-                };
-            case 'right':
-                return {
-                    top: spotlightRect.top,
-                    left: spotlightRect.right + pad,
-                };
-            default:
-                return { top: spotlightRect.bottom + pad, left: spotlightRect.left };
+        let top: number;
+        let left: number;
+
+        if (pos === 'bottom' || pos === 'top') {
+            left = clampLeft(centerX - tooltipW / 2);
+
+            if (pos === 'bottom') {
+                top = spotlightRect.bottom + pad;
+                // If overflows bottom, place above
+                if (top + tooltipH > vh - edgePad) {
+                    top = Math.max(edgePad, spotlightRect.top - pad - tooltipH);
+                }
+            } else {
+                top = spotlightRect.top - pad - tooltipH;
+                // If overflows top, place below
+                if (top < edgePad) {
+                    top = spotlightRect.bottom + pad;
+                }
+            }
+        } else if (pos === 'right') {
+            left = spotlightRect.right + pad;
+            top = Math.max(edgePad, Math.min(spotlightRect.top, vh - tooltipH - edgePad));
+
+            // If overflows right, place below the element instead
+            if (left + tooltipW > vw - edgePad) {
+                left = clampLeft(centerX - tooltipW / 2);
+                top = spotlightRect.bottom + pad;
+                if (top + tooltipH > vh - edgePad) {
+                    top = Math.max(edgePad, spotlightRect.top - pad - tooltipH);
+                }
+            }
+        } else {
+            // left
+            left = spotlightRect.left - pad - tooltipW;
+            top = Math.max(edgePad, Math.min(spotlightRect.top, vh - tooltipH - edgePad));
+
+            // If overflows left, place below the element instead
+            if (left < edgePad) {
+                left = clampLeft(centerX - tooltipW / 2);
+                top = spotlightRect.bottom + pad;
+                if (top + tooltipH > vh - edgePad) {
+                    top = Math.max(edgePad, spotlightRect.top - pad - tooltipH);
+                }
+            }
         }
+
+        // Final safety clamp
+        top = Math.max(edgePad, Math.min(top, vh - tooltipH - edgePad));
+        left = Math.max(edgePad, Math.min(left, vw - tooltipW - edgePad));
+
+        return { top, left, width: tooltipW };
     };
 
     return (
@@ -204,7 +272,6 @@ export default function OnboardingTour() {
                         />
                     )}
 
-                    {/* Tooltip card */}
                     <motion.div
                         key={step}
                         initial={{ opacity: 0, y: 8 }}
@@ -214,14 +281,16 @@ export default function OnboardingTour() {
                         style={{
                             position: 'fixed',
                             ...getTooltipStyle(),
-                            width: 300,
-                            background: 'var(--bg-glass, rgba(14, 14, 40, 0.92))',
+                            maxWidth: 'calc(100vw - 32px)',
+                            overflow: 'hidden',
+                            background: 'var(--surface-popover, rgba(255, 255, 255, 0.98))',
                             backdropFilter: 'blur(24px)',
                             WebkitBackdropFilter: 'blur(24px)',
-                            border: '1px solid var(--border-glass, rgba(255,255,255,0.1))',
+                            border: '1px solid var(--border-default, rgba(0,0,0,0.08))',
                             borderRadius: 16,
                             padding: '20px',
-                            boxShadow: '0 16px 48px rgba(0,0,0,0.3)',
+                            boxShadow: '0 16px 48px rgba(0,0,0,0.15)',
+                            textAlign: 'center',
                         }}
                     >
                         {/* Close */}
