@@ -85,38 +85,31 @@ export default function GlobalSearch() {
             <button
                 onClick={() => setOpen(true)}
                 style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '8px 14px', borderRadius: 'var(--radius-full)',
-                    background: 'var(--bg-glass)', backdropFilter: 'blur(16px)',
-                    border: '1px solid var(--border-glass)',
-                    color: 'var(--fg-tertiary)', fontSize: 'var(--text-xs)',
-                    cursor: 'pointer', transition: 'all 0.2s',
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-lg)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(var(--accent-500-rgb), 0.08)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(var(--accent-500-rgb), 0.12)',
+                    color: 'var(--accent-500)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
                     flexShrink: 0,
+                    padding: 0,
                 }}
                 onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(var(--accent-500-rgb), 0.2)';
-                    e.currentTarget.style.boxShadow = '0 0 12px rgba(var(--accent-500-rgb), 0.05)';
+                    e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.15)';
                 }}
                 onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-glass)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.08)';
                 }}
                 title="Search (⌘K)"
             >
-                <Search size={14} />
-                <span className="search-label" style={{ display: 'none' }}>Search…</span>
-                <kbd className="search-kbd" style={{
-                    display: 'none', padding: '2px 6px', borderRadius: 4,
-                    background: 'rgba(var(--accent-500-rgb), 0.06)',
-                    border: '1px solid var(--border-glass)',
-                    fontSize: '10px', fontWeight: 600, color: 'var(--fg-muted)',
-                    fontFamily: 'inherit',
-                }}>⌘K</kbd>
-                <style>{`
-                    @media (min-width: 640px) {
-                        .search-label, .search-kbd { display: inline !important; }
-                    }
-                `}</style>
+                <Search size={16} />
             </button>
 
             {/* Modal overlay */}

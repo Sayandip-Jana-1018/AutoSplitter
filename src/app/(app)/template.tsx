@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+
 import { motion } from 'framer-motion';
 
 /**
@@ -9,14 +9,6 @@ import { motion } from 'framer-motion';
  * Uses mounted state to avoid hydration mismatch with Framer Motion.
  */
 export default function AppTemplate({ children }: { children: React.ReactNode }) {
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => { setMounted(true); }, []);
-
-    // On server & first client render: render without animation to match SSR HTML
-    if (!mounted) {
-        return <div>{children}</div>;
-    }
-
     return (
         <motion.div
             initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
@@ -25,6 +17,7 @@ export default function AppTemplate({ children }: { children: React.ReactNode })
                 duration: 0.3,
                 ease: [0.16, 1, 0.3, 1],
             }}
+            suppressHydrationWarning
         >
             {children}
         </motion.div>

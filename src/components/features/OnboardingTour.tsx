@@ -82,7 +82,7 @@ export default function OnboardingTour() {
             const seen = localStorage.getItem(STORAGE_KEY);
             if (!seen) {
                 // Delay to allow page to render
-                timerRef.current = window.setTimeout(() => setActive(true), 1500);
+                timerRef.current = window.setTimeout(() => setActive(true), 600);
             }
         } catch {
             // localStorage unavailable

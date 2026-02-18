@@ -164,26 +164,59 @@ export default function SettingsPage() {
                             </div>
                         ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-                                {/* Avatar with glow ring */}
+                                {/* Avatar with vibrant rotating ring */}
                                 <div style={{
-                                    padding: 3, borderRadius: '50%',
-                                    background: 'linear-gradient(135deg, var(--accent-400), var(--accent-600))',
-                                    boxShadow: '0 0 20px rgba(var(--accent-500-rgb), 0.3)',
                                     position: 'relative',
+                                    width: 64, height: 64, // Explicit size ensuring perfect circle
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     flexShrink: 0,
                                 }}>
-                                    <div style={{ borderRadius: '50%', padding: 2, background: 'var(--bg-primary)' }}>
-                                        <Avatar name={user?.name || 'User'} image={user?.image} size="lg" />
+                                    {/* Rotating Light Effect */}
+                                    <motion.div
+                                        animate={{ rotate: 360 }}
+                                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                                        style={{
+                                            position: 'absolute',
+                                            inset: 0,
+                                            borderRadius: '50%',
+                                            background: 'conic-gradient(from 0deg, transparent 0%, var(--accent-500) 30%, transparent 60%)',
+                                            filter: 'drop-shadow(0 0 6px var(--accent-500))', // Stronger glow
+                                        }}
+                                    />
+
+                                    {/* Inner Mask (Gap) */}
+                                    <div style={{
+                                        position: 'relative',
+                                        width: 54, height: 54, // ~5px ring thickness
+                                        borderRadius: '50%',
+                                        background: 'var(--bg-glass)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        zIndex: 1,
+                                        backdropFilter: 'blur(4px)',
+                                        boxShadow: 'inset 0 0 4px rgba(0,0,0,0.1)',
+                                    }}>
+                                        {/* Avatar Container */}
+                                        <div style={{
+                                            borderRadius: '50%',
+                                            overflow: 'hidden',
+                                            width: 48, height: 48,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            background: 'var(--bg-primary)',
+                                        }}>
+                                            <Avatar name={user?.name || 'User'} image={user?.image} size="lg" />
+                                        </div>
                                     </div>
+
                                     {/* Camera overlay for upload */}
                                     <label style={{
-                                        position: 'absolute', bottom: -2, right: -2,
+                                        position: 'absolute', bottom: 0, right: 0,
                                         width: 24, height: 24, borderRadius: '50%',
                                         background: 'var(--accent-500)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         cursor: uploadingAvatar ? 'wait' : 'pointer',
                                         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                                        border: '2px solid var(--bg-primary)',
+                                        border: '2px solid var(--bg-glass)',
+                                        zIndex: 2,
                                     }}>
                                         {uploadingAvatar ? (
                                             <Loader2 size={11} style={{ color: 'white', animation: 'spin 1s linear infinite' }} />
@@ -361,12 +394,12 @@ function GlassSection({ title, icon, children }: {
             padding: 'var(--space-4)',
             position: 'relative',
             overflow: 'hidden',
-        }}>
+        }} suppressHydrationWarning>
             <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)',
                 marginBottom: 'var(--space-3)', paddingBottom: 'var(--space-2)',
                 borderBottom: '1px solid var(--border-subtle)',
-            }}>
+            }} suppressHydrationWarning>
                 <span style={{ color: 'var(--accent-400)' }}>{icon}</span>
                 <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--fg-primary)' }}>{title}</span>
             </div>
@@ -385,7 +418,7 @@ function GlassRow({ label, subtitle, danger, action, disabled }: {
             cursor: disabled ? 'default' : action ? 'pointer' : 'default',
             borderBottom: '1px solid rgba(var(--accent-500-rgb), 0.04)',
             gap: 6,
-        }}>
+        }} suppressHydrationWarning>
             <div style={{ textAlign: 'center' }}>
                 <div style={{
                     fontSize: 'var(--text-sm)', fontWeight: 600,
@@ -419,6 +452,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: () =>
                 transition: 'background 0.3s',
                 boxShadow: checked ? '0 0 12px rgba(var(--accent-500-rgb), 0.2)' : 'none',
             }}
+            suppressHydrationWarning
         >
             <motion.div
                 layout

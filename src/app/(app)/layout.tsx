@@ -275,13 +275,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         <h1 className={styles.headerTitle}>{pageTitle}</h1>
                     </div>
                     <div className={styles.headerRight}>
-                        <GlobalSearch />
+                        <><GlobalSearch /></>
                         <NotificationPanel />
                         <ThemeSelector />
                         <div
                             onClick={() => router.push('/settings')}
                             tabIndex={0}
-                            style={{ cursor: 'pointer', transition: 'transform 0.15s ease' }}
+                            style={{
+                                cursor: 'pointer',
+                                transition: 'transform 0.15s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
                             onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.9)'; }}
                             onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
                             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
@@ -293,23 +299,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </header>
 
                 {/* Page content */}
-                <div className={styles.pageContent}>
+                <div className={styles.pageContent} suppressHydrationWarning>
                     <NotificationBanner />
                     <ClipboardBanner />
                     {children}
                 </div>
             </main>
 
-            {/* ── FAB (mobile) ── */}
-            <motion.button
-                className={styles.fab}
-                whileTap={{ scale: 0.9 }}
-                whileHover={{ scale: 1.05 }}
-                onClick={() => router.push('/transactions/new')}
-                aria-label="Add expense"
-            >
-                <Plus size={24} />
-            </motion.button>
 
             {/* ── AI Chat Panel ── */}
             <AIChatPanel />

@@ -26,8 +26,21 @@ export default function AIChatPanel() {
     const [mounted, setMounted] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => { setMounted(true); }, []);
+
+    // Close on outside click
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e: MouseEvent) => {
+            if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -121,18 +134,21 @@ export default function AIChatPanel() {
             <AnimatePresence>
                 {open && (
                     <motion.div
+                        ref={panelRef}
                         initial={{ opacity: 0, y: 40, scale: 0.92 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 40, scale: 0.92 }}
                         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                         style={{
                             position: 'fixed',
-                            bottom: 20,
-                            right: 20,
+                            bottom: 90,
+                            left: 0,
+                            right: 0,
+                            margin: '0 auto',
                             width: 360,
-                            maxWidth: 'calc(100vw - 40px)',
+                            maxWidth: 'calc(100vw - 32px)',
                             height: 480,
-                            maxHeight: 'calc(100vh - 120px)',
+                            maxHeight: 'calc(100vh - 180px)',
                             background: 'var(--surface-popover)',
                             backdropFilter: 'blur(24px) saturate(1.5)',
                             WebkitBackdropFilter: 'blur(24px) saturate(1.5)',

@@ -220,8 +220,8 @@ export default function ThemeSelector() {
                 transition={{ type: 'spring', stiffness: 300, damping: 15 }}
                 onClick={toggleTheme}
                 style={{
-                    width: 36,
-                    height: 36,
+                    width: 34,
+                    height: 34,
                     borderRadius: 'var(--radius-lg)',
                     display: 'flex',
                     alignItems: 'center',
@@ -230,7 +230,7 @@ export default function ThemeSelector() {
                     backdropFilter: 'blur(12px)',
                     WebkitBackdropFilter: 'blur(12px)',
                     border: '1px solid rgba(var(--accent-500-rgb), 0.12)',
-                    color: 'var(--fg-secondary)',
+                    color: 'var(--accent-500)',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                 }}
@@ -245,7 +245,7 @@ export default function ThemeSelector() {
                         transition={{ duration: 0.2 }}
                         style={{ display: 'flex' }}
                     >
-                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
                     </motion.span>
                 </AnimatePresence>
             </motion.button>
@@ -255,8 +255,8 @@ export default function ThemeSelector() {
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setOpen(!open)}
                 style={{
-                    width: 36,
-                    height: 36,
+                    width: 34,
+                    height: 34,
                     borderRadius: 'var(--radius-lg)',
                     display: 'flex',
                     alignItems: 'center',
@@ -275,7 +275,7 @@ export default function ThemeSelector() {
                 }}
                 aria-label="Choose color palette"
             >
-                <Palette size={18} />
+                <Palette size={16} />
             </motion.button>
 
             {/* ── Desktop: Dropdown anchored to wrapper ── */}

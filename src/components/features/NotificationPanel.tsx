@@ -126,23 +126,31 @@ export default function NotificationPanel() {
                     <button
                         onClick={() => setOpen(!open)}
                         style={{
+                            width: 34,
+                            height: 34,
                             position: 'relative',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: 6,
-                            color: 'var(--fg-secondary)',
+                            borderRadius: 'var(--radius-lg)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            borderRadius: 'var(--radius-md)',
-                            transition: 'all 0.2s',
+                            background: 'rgba(var(--accent-500-rgb), 0.08)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(var(--accent-500-rgb), 0.12)',
+                            color: 'var(--accent-500)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            padding: 0,
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--fg-primary)'; e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.08)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--fg-secondary)'; e.currentTarget.style.background = 'none'; }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.08)';
+                        }}
                         aria-label="Notifications"
                     >
-                        <Bell size={20} />
+                        <Bell size={16} />
                         {unreadCount > 0 && (
                             <motion.span
                                 initial={{ scale: 0 }}
@@ -176,10 +184,11 @@ export default function NotificationPanel() {
                                 exit={{ opacity: 0, y: -8, scale: 0.95 }}
                                 transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                                 style={{
-                                    position: 'absolute',
-                                    top: 'calc(100% + 8px)',
-                                    right: 0,
+                                    position: 'fixed',
+                                    top: 72,
+                                    right: 16,
                                     width: 340,
+                                    maxWidth: 'calc(100vw - 32px)',
                                     maxHeight: 420,
                                     background: 'var(--surface-popover)',
                                     backdropFilter: 'blur(24px) saturate(1.5)',
