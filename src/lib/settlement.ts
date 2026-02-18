@@ -1,9 +1,12 @@
 /**
  * AutoSplit — Settlement Algorithm
- * Greedy Min-Transfer Netting
+ * Greedy Min-Transfer Netting + Graph-Optimized Settlement
  *
  * Calculates who owes whom using minimal number of transfers.
  * All amounts in paise (integer) to avoid floating point issues.
+ *
+ * Phase 2: Added optimizeSettlements() that uses net-balance
+ * consolidation with exact-match pruning for even fewer transfers.
  */
 
 export interface Balance {
@@ -27,6 +30,7 @@ export interface SettlementResult {
     transfers: Transfer[];
     totalSpent: number; // paise
     perPersonAvg: number; // paise
+    optimizationSavings?: number; // how many fewer transfers vs naive
 }
 
 interface TransactionData {
@@ -37,6 +41,7 @@ interface TransactionData {
 
 /**
  * Calculate balances and optimal transfers for a set of transactions.
+ * Uses graph-optimized settlement for minimum transfers.
  */
 export function calculateSettlement(
     transactions: TransactionData[]
@@ -77,27 +82,30 @@ export function calculateSettlement(
         totalSpent += data.paid;
     }
 
-    // Avoid double counting — totalSpent is sum of what each person paid
-    // which equals the total of all transactions
-    totalSpent = totalSpent / 1; // already correct since we count payer.paid once
-
     const perPersonAvg = balances.length > 0 ? Math.round(totalSpent / balances.length) : 0;
 
-    // Step 3: Greedy min-transfer algorithm
-    const transfers = minimizeTransfers(balances);
+    // Step 3: Optimized settlement (Phase 2 upgrade)
+    const naiveTransfers = minimizeTransfers(balances);
+    const optimizedTransfers = optimizeSettlements(balances);
+
+    // Use whichever produces fewer transfers
+    const transfers = optimizedTransfers.length <= naiveTransfers.length
+        ? optimizedTransfers
+        : naiveTransfers;
+
+    const optimizationSavings = naiveTransfers.length - transfers.length;
 
     return {
         balances: balances.sort((a, b) => b.balance - a.balance),
         transfers,
         totalSpent,
         perPersonAvg,
+        optimizationSavings: optimizationSavings > 0 ? optimizationSavings : undefined,
     };
 }
 
 /**
- * Greedy algorithm to minimize the number of transfers.
- * Takes creditors (positive balance) and debtors (negative balance)
- * and matches them to produce minimal transfers.
+ * Original greedy algorithm (preserved for comparison).
  */
 function minimizeTransfers(balances: Balance[]): Transfer[] {
     const creditors: { userId: string; name: string; amount: number }[] = [];
@@ -111,7 +119,6 @@ function minimizeTransfers(balances: Balance[]): Transfer[] {
         }
     }
 
-    // Sort descending by amount
     creditors.sort((a, b) => b.amount - a.amount);
     debtors.sort((a, b) => b.amount - a.amount);
 
@@ -122,6 +129,89 @@ function minimizeTransfers(balances: Balance[]): Transfer[] {
     while (ci < creditors.length && di < debtors.length) {
         const creditor = creditors[ci];
         const debtor = debtors[di];
+        const transferAmount = Math.min(creditor.amount, debtor.amount);
+
+        if (transferAmount > 0) {
+            transfers.push({
+                fromId: debtor.userId,
+                fromName: debtor.name,
+                toId: creditor.userId,
+                toName: creditor.name,
+                amount: transferAmount,
+            });
+        }
+
+        creditor.amount -= transferAmount;
+        debtor.amount -= transferAmount;
+
+        if (creditor.amount === 0) ci++;
+        if (debtor.amount === 0) di++;
+    }
+
+    return transfers;
+}
+
+/**
+ * Phase 2: Graph-optimized settlement algorithm.
+ *
+ * Strategy:
+ * 1. First pass: find exact matches (debtor amount == creditor amount)
+ *    → these cancel in a single transfer with no remainder
+ * 2. Second pass: sorted merge of remaining debtors and creditors
+ *
+ * This produces fewer transfers than the naive greedy approach,
+ * especially in groups where many people owe similar amounts.
+ */
+export function optimizeSettlements(balances: Balance[]): Transfer[] {
+    const creditors: { userId: string; name: string; amount: number }[] = [];
+    const debtors: { userId: string; name: string; amount: number }[] = [];
+
+    for (const b of balances) {
+        if (b.balance > 0) {
+            creditors.push({ userId: b.userId, name: b.name, amount: b.balance });
+        } else if (b.balance < 0) {
+            debtors.push({ userId: b.userId, name: b.name, amount: -b.balance });
+        }
+    }
+
+    const transfers: Transfer[] = [];
+    const usedCreditors = new Set<number>();
+    const usedDebtors = new Set<number>();
+
+    // Pass 1: Find exact matches (eliminates 2 people per transfer)
+    for (let di = 0; di < debtors.length; di++) {
+        if (usedDebtors.has(di)) continue;
+        for (let ci = 0; ci < creditors.length; ci++) {
+            if (usedCreditors.has(ci)) continue;
+            if (debtors[di].amount === creditors[ci].amount) {
+                transfers.push({
+                    fromId: debtors[di].userId,
+                    fromName: debtors[di].name,
+                    toId: creditors[ci].userId,
+                    toName: creditors[ci].name,
+                    amount: debtors[di].amount,
+                });
+                usedDebtors.add(di);
+                usedCreditors.add(ci);
+                break;
+            }
+        }
+    }
+
+    // Pass 2: Sorted merge of remaining
+    const remCreditors = creditors
+        .filter((_, i) => !usedCreditors.has(i))
+        .sort((a, b) => b.amount - a.amount);
+    const remDebtors = debtors
+        .filter((_, i) => !usedDebtors.has(i))
+        .sort((a, b) => b.amount - a.amount);
+
+    let ci = 0;
+    let di = 0;
+
+    while (ci < remCreditors.length && di < remDebtors.length) {
+        const creditor = remCreditors[ci];
+        const debtor = remDebtors[di];
         const transferAmount = Math.min(creditor.amount, debtor.amount);
 
         if (transferAmount > 0) {

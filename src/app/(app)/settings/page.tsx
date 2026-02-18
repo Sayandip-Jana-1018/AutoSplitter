@@ -163,13 +163,14 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-3)', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
                                 {/* Avatar with glow ring */}
                                 <div style={{
                                     padding: 3, borderRadius: '50%',
                                     background: 'linear-gradient(135deg, var(--accent-400), var(--accent-600))',
                                     boxShadow: '0 0 20px rgba(var(--accent-500-rgb), 0.3)',
                                     position: 'relative',
+                                    flexShrink: 0,
                                 }}>
                                     <div style={{ borderRadius: '50%', padding: 2, background: 'var(--bg-primary)' }}>
                                         <Avatar name={user?.name || 'User'} image={user?.image} size="lg" />
@@ -192,17 +193,17 @@ export default function SettingsPage() {
                                         <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatarUpload} style={{ display: 'none' }} disabled={uploadingAvatar} />
                                     </label>
                                 </div>
-                                <div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{
                                         fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--fg-primary)',
                                     }}>
                                         {user?.name || 'User'}
                                     </div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)', marginTop: 2 }}>
+                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {user?.email || ''}
                                     </div>
-                                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-muted)', marginTop: 2 }}>
-                                        Since {memberSince}
+                                    <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--fg-muted)', marginTop: 2 }}>
+                                        Member since {memberSince}
                                     </div>
                                 </div>
                                 <button
@@ -212,7 +213,7 @@ export default function SettingsPage() {
                                         background: 'rgba(var(--accent-500-rgb), 0.08)',
                                         border: '1px solid rgba(var(--accent-500-rgb), 0.12)',
                                         color: 'var(--accent-400)', fontSize: 'var(--text-xs)', fontWeight: 600,
-                                        cursor: 'pointer', transition: 'all 0.2s',
+                                        cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
                                     }}
                                 >
                                     Edit
@@ -244,7 +245,7 @@ export default function SettingsPage() {
                     {/* Color Palette Picker */}
                     <div style={{ padding: 'var(--space-3) 0' }}>
                         <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 'var(--space-3)', textAlign: 'center' }}>
-                            Accent Color
+                            Color Theme
                         </div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
                             {COLOR_PALETTES.map((p) => {

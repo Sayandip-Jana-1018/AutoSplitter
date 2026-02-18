@@ -8,8 +8,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ── NextAuth Models ──────────────────────────────────────────
@@ -65,14 +66,20 @@ model User {
   sessions    Session[]
 
   // App relations
-  ownedGroups  Group[]       @relation("GroupOwner")
-  memberships  GroupMember[]
-  paidTxns     Transaction[] @relation("Payer")
-  splitItems   SplitItem[]
-  settleFrom   Settlement[]  @relation("SettleFrom")
-  settleTo     Settlement[]  @relation("SettleTo")
-  contacts     Contact[]     @relation("UserContacts")
-  linkedContacts Contact[]   @relation("LinkedContacts")
+  ownedGroups    Group[]        @relation("GroupOwner")
+  memberships    GroupMember[]
+  paidTxns       Transaction[]  @relation("Payer")
+  splitItems     SplitItem[]
+  settleFrom     Settlement[]   @relation("SettleFrom")
+  settleTo       Settlement[]   @relation("SettleTo")
+  contacts       Contact[]      @relation("UserContacts")
+  linkedContacts Contact[]      @relation("LinkedContacts")
+
+  // Phase 2 relations
+  notifications  Notification[]
+  budgets        Budget[]
+  auditLogs      AuditLog[]
+  chatMessages   ChatMessage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -89,6 +96,7 @@ model Group {
   members GroupMember[]
   trips   Trip[]
 
+  deletedAt DateTime? // soft delete
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -142,9 +150,10 @@ model Transaction {
   payer  User @relation("Payer", fields: [payerId], references: [id])
   splits SplitItem[]
 
-  date      DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  date      DateTime  @default(now())
+  deletedAt DateTime? // soft delete
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model SplitItem {
@@ -173,8 +182,9 @@ model Settlement {
   from User @relation("SettleFrom", fields: [fromId], references: [id])
   to   User @relation("SettleTo", fields: [toId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  deletedAt DateTime? // soft delete
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Contact {
@@ -194,4 +204,62 @@ model Contact {
   addedAt DateTime @default(now())
 
   @@unique([ownerId, email])
+}
+
+// ── Phase 2: Notifications ──────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "payment_reminder" | "new_expense" | "settlement_completed" | "group_activity"
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  link      String?  // deep link e.g. "/settlements"
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ── Phase 2: Budget ─────────────────────────────────────────
+
+model Budget {
+  id       String @id @default(cuid())
+  userId   String
+  category String
+  amount   Int    // monthly limit in paise
+  month    String // "2026-02" format
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, month])
+}
+
+// ── Phase 2: Audit Log ──────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String   // "create" | "update" | "delete"
+  entityType String   // "transaction" | "settlement" | "group"
+  entityId   String
+  details    Json?    // { before: {...}, after: {...} }
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ── Phase 2: AI Chat ────────────────────────────────────────
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String   // "user" | "assistant"
+  content   String   @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 }

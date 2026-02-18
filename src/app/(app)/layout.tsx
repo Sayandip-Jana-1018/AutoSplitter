@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import ClipboardBanner from '@/components/features/ClipboardBanner';
 import NotificationBanner from '@/components/features/NotificationBanner';
+import NotificationPanel from '@/components/features/NotificationPanel';
+import AIChatPanel from '@/components/features/AIChatPanel';
 import ThemeSelector from '@/components/features/ThemeSelector';
 import Avatar from '@/components/ui/Avatar';
 import OfflineIndicator from '@/components/ui/OfflineIndicator';
@@ -274,6 +276,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
                     <div className={styles.headerRight}>
                         <GlobalSearch />
+                        <NotificationPanel />
                         <ThemeSelector />
                         <div
                             onClick={() => router.push('/settings')}
@@ -307,6 +310,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
                 <Plus size={24} />
             </motion.button>
+
+            {/* ── AI Chat Panel ── */}
+            <AIChatPanel />
 
             {/* ── Floating Bottom Nav (mobile) ── */}
             <nav className={styles.bottomNav}>

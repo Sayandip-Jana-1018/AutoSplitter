@@ -72,7 +72,7 @@ export default function NotificationBanner() {
     }, [haptics]);
 
     if (dismissed) return null;
-    if (!mounted) return null;
+    if (!mounted) return <></>;
 
     // Loading state
     if (!dataLoaded) {

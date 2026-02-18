@@ -1,6 +1,6 @@
 # ⚡ AutoSplit — Smart Expense Splitting & Settlement
 
-> A premium, full-stack expense-splitting web app built with **Next.js 16**, **Prisma**, **PostgreSQL (Neon)**, and **NextAuth v5**. Features glassmorphic UI, AI-powered receipt scanning, debt simplification, real-time analytics, and 12 color themes.
+> A premium, full-stack expense-splitting web app built with **Next.js 16**, **Prisma**, **PostgreSQL (Neon)**, and **NextAuth v5**. Features glassmorphic UI, AI-powered receipt scanning, Gemini AI chat assistant, debt simplification, real-time analytics, smart notifications, and 12 color themes.
 
 ---
 
@@ -17,11 +17,12 @@ graph TB
         Settlements["Settlements"]
         Analytics["Analytics"]
         Settings["Settings"]
+        AdminHealth["Admin Health Dashboard"]
     end
 
     subgraph Components["🧩 Component Library"]
-        UI["UI Components<br/>(Card, Button, Avatar, Modal, Toast,<br/>AmountPad, Confetti, GlobalSearch,<br/>PullToRefresh, Skeleton, Icons)"]
-        Features["Feature Components<br/>(OnboardingTour, ThemeSelector,<br/>ClipboardBanner, NotificationBanner,<br/>SplitSelector, GroupInvite,<br/>SettlementGraph)"]
+        UI["UI Components<br/>(Card, Button, Avatar, Modal, Toast,<br/>AmountPad, Confetti, GlobalSearch,<br/>PullToRefresh, Skeleton, Icons, EmptyState)"]
+        Features["Feature Components<br/>(OnboardingTour, ThemeSelector,<br/>ClipboardBanner, NotificationBanner,<br/>NotificationPanel, AIChatPanel,<br/>SplitSelector, GroupInvite,<br/>SettlementGraph)"]
         Charts["Charts<br/>(SpendingCharts via Recharts)"]
     end
 
@@ -42,16 +43,25 @@ graph TB
         SettleAPI["GET/POST /api/settlements"]
         TripsAPI["GET/POST /api/trips"]
         SearchAPI["GET /api/search"]
+        NotifAPI["GET/PATCH /api/notifications"]
+        BudgetAPI["GET/POST /api/budgets"]
+        AnalyticsAPI["GET /api/analytics"]
+        AIChatAPI["POST /api/ai/chat"]
+        HealthAPI["GET /api/admin/health"]
     end
 
     subgraph Backend["⚙️ Backend Services"]
         PrismaORM["Prisma ORM"]
         AuthLib["NextAuth v5"]
         Parser["Transaction Parser<br/>(OCR + regex)"]
-        SettleLib["Settlement Engine<br/>(Greedy netting)"]
+        SettleLib["Settlement Engine<br/>(Greedy + Optimized)"]
+        NotifLib["Notification Engine"]
+        AuditLib["Audit Logger"]
+        RateLimit["Rate Limiter"]
         Export["CSV/JSON Export"]
         UPI["UPI Deep-link Generator"]
         Validators["Zod Validators"]
+        FeatureFlags["Feature Flags"]
     end
 
     subgraph DB["🗄️ Database — PostgreSQL (Neon)"]
@@ -62,6 +72,10 @@ graph TB
         TransDB["Transactions"]
         Splits["SplitItems"]
         SettleDB["Settlements"]
+        NotifDB["Notifications"]
+        BudgetDB["Budgets"]
+        AuditDB["AuditLogs"]
+        ChatDB["ChatMessages"]
     end
 
     Client --> Components
@@ -86,6 +100,10 @@ erDiagram
     User ||--o{ SplitItem : owes
     User ||--o{ Settlement : "settles from"
     User ||--o{ Settlement : "settles to"
+    User ||--o{ Notification : receives
+    User ||--o{ Budget : sets
+    User ||--o{ AuditLog : generates
+    User ||--o{ ChatMessage : sends
 
     Group ||--o{ GroupMember : contains
     Group ||--o{ Trip : has
@@ -111,6 +129,7 @@ erDiagram
         string emoji
         string inviteCode UK
         string ownerId FK
+        datetime deletedAt "soft delete"
     }
 
     Trip {
@@ -133,6 +152,7 @@ erDiagram
         string method
         string splitType
         string receiptUrl
+        datetime deletedAt "soft delete"
     }
 
     SplitItem {
@@ -150,6 +170,42 @@ erDiagram
         int amount "in paise"
         string status
         string method
+        datetime deletedAt "soft delete"
+    }
+
+    Notification {
+        string id PK
+        string userId FK
+        string type "expense | settlement | group | reminder"
+        string title
+        string message
+        boolean read
+        string link
+    }
+
+    Budget {
+        string id PK
+        string userId FK
+        string category
+        int amount "in paise"
+        int month
+        int year
+    }
+
+    AuditLog {
+        string id PK
+        string userId FK
+        string action "create | update | delete"
+        string entityType
+        string entityId
+        json details
+    }
+
+    ChatMessage {
+        string id PK
+        string userId FK
+        string role "user | assistant"
+        string content
     }
 ```
 
@@ -165,18 +221,21 @@ erDiagram
 | **Trip Scoping** | Organize expenses within trips per group with date ranges and currency |
 | **Split Types** | Equal, percentage, custom, and item-based splitting |
 | **Settlements** | Track who owes whom, mark as completed, with UPI deep-links |
-| **Debt Simplification** | Greedy netting algorithm minimizes the number of transfers |
-| **Analytics Dashboard** | Category breakdown, spending trends via Recharts |
+| **Debt Simplification** | Dual algorithm: greedy netting + optimized exact-match pruning (auto-picks fewer transfers) |
+| **Analytics Dashboard** | 6-month spending trends, category breakdown, budget vs actual comparison, smart AI insights |
+| **Budget Tracking** | Set monthly budgets per category, compare against actual spending |
 | **CSV/JSON Export** | Export transaction data for external use |
 
 ### AI & Smart Features
 | Feature | Description |
 |---|---|
+| **🤖 AI Chat Assistant** | Gemini-powered conversational assistant — ask about spending, debts, groups in natural language |
 | **Receipt Scanner (OCR)** | Tesseract.js-powered scanner extracts amount, merchant, payment method from GPay/PhonePe/Paytm screenshots |
 | **Live Camera Capture** | getUserMedia viewfinder with real-time scan guide overlay |
 | **Clipboard Paste** | Auto-detect UPI transaction text from clipboard |
 | **Transaction Parser** | Regex engine parses UPI/bank SMS into structured data |
-| **Smart Notifications** | Auto-cycling banner shows pending settlements with one-tap navigation |
+| **Smart Notifications** | Real-time notification panel with type-based icons, unread badges, mark-all-read, 30s auto-polling |
+| **Smart Insights** | AI-generated spending insights: overspend alerts, savings detection, trend change analysis |
 | **Global Search** | Search across transactions, groups, and members |
 
 ### Premium UI/UX
@@ -193,9 +252,19 @@ erDiagram
 | **Onboarding Tour** | 9-step spotlight walkthrough for new users |
 | **Skeleton Loading** | Premium shimmer loading states across all pages |
 | **Offline Indicator** | Detects network loss and shows a banner |
+| **Empty States** | Animated empty-state illustrations with contextual CTAs |
 | **Amount Pad** | GPay-style digit-by-digit number pad bottom sheet |
 | **Receipt Gallery** | Browse scanned receipt thumbnails in a 2-column grid |
 | **QR Code Invites** | Generate QR codes for group invitations |
+
+### System & Admin
+| Feature | Description |
+|---|---|
+| **System Health Dashboard** | Real-time service status, DB latency, data counts, server uptime |
+| **Audit Logging** | Track all data mutations (create/update/delete) with entity details |
+| **Feature Flags** | Toggle features on/off without code changes |
+| **Rate Limiting** | In-memory sliding-window rate limiter (50 req/min per IP) |
+| **API Middleware** | Global request logging and rate limiting via Next.js middleware |
 
 ---
 
@@ -211,7 +280,8 @@ erDiagram
 | **Charts** | Recharts 3 |
 | **OCR** | Tesseract.js 7 |
 | **QR Codes** | qrcode.react |
-| **Auth** | NextAuth v5 (beta-30) with credentials provider + bcryptjs |
+| **AI** | Google Gemini 2.0 Flash (with smart local fallback) |
+| **Auth** | NextAuth v5 (beta-30) with credentials + Google + GitHub providers |
 | **ORM** | Prisma 6 |
 | **Database** | PostgreSQL on Neon |
 | **Validation** | Zod 4 |
@@ -225,13 +295,14 @@ erDiagram
 src/
 ├── app/
 │   ├── (app)/                    # Authenticated app shell
-│   │   ├── layout.tsx            # Sidebar, header, bottom nav, FAB
+│   │   ├── layout.tsx            # Sidebar, header, bottom nav, FAB, AI chat
 │   │   ├── dashboard/            # Home — stats, balance hero, quick actions
 │   │   ├── groups/               # Group list & group detail (balances, members, activity)
 │   │   ├── transactions/         # List/timeline view, new, scan, receipts
 │   │   ├── settlements/          # Settlement tracker with status management
 │   │   ├── analytics/            # Spending charts & breakdowns
-│   │   └── settings/             # Profile, theme, account settings
+│   │   ├── settings/             # Profile, theme, account settings
+│   │   └── admin/health/         # System health dashboard
 │   ├── (auth)/                   # Login & register pages
 │   ├── api/                      # Next.js API route handlers
 │   │   ├── auth/                 # NextAuth endpoints
@@ -241,19 +312,39 @@ src/
 │   │   ├── transactions/         # CRUD with split management
 │   │   ├── settlements/          # Create & list settlements
 │   │   ├── trips/                # Trip management
-│   │   └── search/               # Global search across entities
+│   │   ├── search/               # Global search across entities
+│   │   ├── notifications/        # GET (list + unread) / PATCH (mark read)
+│   │   ├── budgets/              # GET (by month) / POST (upsert per category)
+│   │   ├── analytics/            # Enhanced analytics with AI insights
+│   │   ├── ai/chat/              # Gemini-powered AI assistant
+│   │   └── admin/health/         # System diagnostics endpoint
 │   ├── invite/                   # Public invite accept page
 │   ├── join/                     # Group join flow
 │   └── page.tsx                  # Landing page
 ├── components/
-│   ├── ui/                       # 26 reusable UI components
-│   ├── features/                 # 8 feature-specific components
+│   ├── ui/                       # 27 reusable UI components (incl. EmptyState)
+│   ├── features/                 # 10 feature-specific components (incl. NotificationPanel, AIChatPanel)
 │   ├── charts/                   # Recharts-based spending charts
 │   └── providers/                # Theme & session providers
 ├── hooks/                        # 6 custom React hooks
-├── lib/                          # 8 utility modules (auth, db, parser, settlement, export, upi, validators, utils)
+├── lib/                          # 11 utility modules
+│   ├── auth.ts                   # NextAuth configuration
+│   ├── db.ts                     # Prisma client singleton
+│   ├── settlement.ts             # Dual settlement algorithm (greedy + optimized)
+│   ├── transactionParser.ts      # UPI/SMS regex parser
+│   ├── export.ts                 # CSV/JSON export
+│   ├── upi.ts                    # UPI deep-link generator
+│   ├── validators.ts             # Zod schemas
+│   ├── utils.ts                  # General utilities
+│   ├── featureFlags.ts           # Feature toggle system
+│   ├── apiResponse.ts            # Standardized API response helpers
+│   ├── rateLimit.ts              # Sliding-window rate limiter
+│   ├── recomputeBalances.ts      # Group balance recomputation
+│   ├── notifications.ts          # Notification creation helpers
+│   ├── auditLog.ts               # Audit log recording
+│   └── middleware.ts             # API rate limiting & logging
 └── prisma/
-    └── schema.prisma             # Database schema (9 models)
+    └── schema.prisma             # Database schema (13 models)
 ```
 
 ---
@@ -278,12 +369,22 @@ npm install
 Create a `.env` file in the root:
 
 ```env
-# Database
-DATABASE_URL="postgresql://user:pass@host/autosplit?sslmode=require"
+# Database (Neon PostgreSQL)
+DATABASE_URL="postgresql://user:pass@host-pooler/neondb?sslmode=require"
+DIRECT_URL="postgresql://user:pass@host/neondb?sslmode=require"
 
 # NextAuth
-AUTH_SECRET="your-random-secret-here"
+NEXTAUTH_SECRET="your-random-secret-here"
 NEXTAUTH_URL="http://localhost:3000"
+
+# OAuth (optional)
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GITHUB_ID="your-github-id"
+GITHUB_SECRET="your-github-secret"
+
+# AI (optional — works with local fallback)
+GEMINI_API_KEY="your-gemini-api-key"
 ```
 
 ### 3. Database Setup
@@ -312,6 +413,7 @@ npm start
 
 ## 🔑 API Reference
 
+### Core APIs
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/register` | Create a new user account |
@@ -332,18 +434,36 @@ npm start
 | `POST` | `/api/trips` | Create a trip |
 | `GET` | `/api/search?q=` | Global search |
 
+### Phase 2 APIs
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/notifications` | List notifications with unread count |
+| `PATCH` | `/api/notifications` | Mark notification(s) as read |
+| `GET` | `/api/budgets?month=&year=` | List budgets for a month |
+| `POST` | `/api/budgets` | Create/update budget for a category |
+| `GET` | `/api/analytics` | Enhanced analytics (trends, categories, budget comparison, insights) |
+| `POST` | `/api/ai/chat` | AI assistant — send message, get contextual response |
+| `GET` | `/api/admin/health` | System health diagnostics |
+
 ---
 
 ## 🧮 Debt Simplification Algorithm
 
-The app uses a **greedy netting algorithm** to minimize settlement transfers:
+AutoSplit uses a **dual-algorithm approach** to minimize settlement transfers:
 
+### Algorithm 1: Greedy Netting
 1. Compute each member's **net balance** (total paid − total owed)
 2. Separate into **debtors** (negative balance) and **creditors** (positive balance)
 3. Sort debtors by largest debt, creditors by largest credit
 4. Iteratively match the largest debtor with the largest creditor
 5. Transfer the minimum of the two amounts, reducing both
-6. Result: an optimal set of transfers (often fewer than n−1)
+
+### Algorithm 2: Optimized Exact-Match Pruning
+1. Compute net balances (same as above)
+2. **Phase 1 — Exact matches**: Find debtors and creditors with matching amounts and pair them directly (one transfer each)
+3. **Phase 2 — Sorted merge**: Pair remaining debtors/creditors by size
+
+The engine runs both algorithms and **automatically picks the one with fewer transfers**, reporting savings when applicable.
 
 ---
 
