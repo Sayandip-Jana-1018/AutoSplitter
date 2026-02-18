@@ -13,6 +13,7 @@
     font-weight: var(--weight-medium, 500);
     color: var(--fg-secondary);
     margin-bottom: 2px;
+    text-align: center;
 }
 
 .inputContainer {

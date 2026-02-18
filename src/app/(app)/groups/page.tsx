@@ -153,7 +153,7 @@ export default function GroupsPage() {
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', textAlign: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <p style={{ color: 'var(--fg-tertiary)', fontSize: 'var(--text-xs)' }}>
                     {groups.length} group{groups.length !== 1 ? 's' : ''} · Split expenses together

@@ -18,6 +18,8 @@ import {
     Inbox,
     Loader2,
     Link2,
+    UserMinus,
+    Trash2,
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Button from '@/components/ui/Button';
@@ -100,6 +102,8 @@ export default function GroupDetailPage() {
     const [suggestedSettlements, setSuggestedSettlements] = useState<
         { from: string; fromName: string; to: string; toName: string; amount: number }[]
     >([]);
+    const [memberToRemove, setMemberToRemove] = useState<MemberData | null>(null);
+    const [removingMember, setRemovingMember] = useState(false);
     const { toast } = useToast();
 
     const fetchGroup = useCallback(async () => {
@@ -422,6 +426,8 @@ export default function GroupDetailPage() {
                         {members.map((member, i) => {
                             const balance = group.balances[member.userId] || 0;
                             const isCurrentUser = member.userId === group.currentUserId;
+                            const isOwner = member.userId === group.members.find(m => m.role === 'admin')?.userId;
+                            const canRemove = !isCurrentUser && group.currentUserId === group.members.find(m => m.role === 'admin')?.userId;
                             return (
                                 <motion.div
                                     key={member.userId}
@@ -456,6 +462,30 @@ export default function GroupDetailPage() {
                                                     {formatCurrency(Math.abs(balance))}
                                                 </div>
                                             </div>
+                                            {canRemove && (
+                                                <button
+                                                    onClick={() => setMemberToRemove(member)}
+                                                    style={{
+                                                        background: 'rgba(239, 68, 68, 0.08)',
+                                                        border: '1px solid rgba(239, 68, 68, 0.15)',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        width: 32, height: 32,
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        cursor: 'pointer', flexShrink: 0,
+                                                        color: 'var(--color-error)',
+                                                        transition: 'all 0.2s',
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                                                    }}
+                                                    title={`Remove ${member.user.name}`}
+                                                >
+                                                    <UserMinus size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     </Card>
                                 </motion.div>
@@ -628,6 +658,73 @@ export default function GroupDetailPage() {
                     >
                         Create Trip
                     </Button>
+                </div>
+            </Modal>
+
+            {/* Remove Member Confirmation Modal */}
+            <Modal isOpen={!!memberToRemove} onClose={() => setMemberToRemove(null)} title="Remove Member" size="small">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', textAlign: 'center' }}>
+                    <div style={{
+                        width: 56, height: 56, borderRadius: 'var(--radius-full)',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto', color: 'var(--color-error)',
+                    }}>
+                        <Trash2 size={24} />
+                    </div>
+                    <div>
+                        <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: 4 }}>
+                            Remove {memberToRemove?.user.name || 'this member'}?
+                        </h3>
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-tertiary)' }}>
+                            This will remove them from the group. They won&apos;t be able to see transactions or settlements unless re-invited.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                        <Button
+                            fullWidth
+                            variant="outline"
+                            onClick={() => setMemberToRemove(null)}
+                            disabled={removingMember}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            fullWidth
+                            disabled={removingMember}
+                            leftIcon={removingMember ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={14} />}
+                            onClick={async () => {
+                                if (!memberToRemove) return;
+                                setRemovingMember(true);
+                                try {
+                                    const res = await fetch(`/api/groups/${groupId}/members`, {
+                                        method: 'DELETE',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ userId: memberToRemove.userId }),
+                                    });
+                                    if (res.ok) {
+                                        toast(`${memberToRemove.user.name || 'Member'} removed from group`, 'success');
+                                        setMemberToRemove(null);
+                                        setLoading(true);
+                                        await fetchGroup();
+                                    } else {
+                                        const data = await res.json();
+                                        toast(data.error || 'Failed to remove member', 'error');
+                                    }
+                                } catch {
+                                    toast('Network error', 'error');
+                                } finally {
+                                    setRemovingMember(false);
+                                }
+                            }}
+                            style={{
+                                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                                borderColor: 'transparent',
+                            }}
+                        >
+                            Remove
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         </div >

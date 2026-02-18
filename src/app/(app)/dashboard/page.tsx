@@ -76,6 +76,7 @@ interface Settlement {
 
 interface GroupMember {
     name: string;
+    image?: string | null;
 }
 
 /* ── Smart Greeting ── */
@@ -153,8 +154,9 @@ export default function DashboardPage() {
                     if (group.members) {
                         for (const m of group.members) {
                             const name = m.user?.name || m.name || 'Unknown';
+                            const image = m.user?.image || m.image || null;
                             if (!allMembers.find(am => am.name === name)) {
-                                allMembers.push({ name });
+                                allMembers.push({ name, image });
                             }
                         }
                     }
@@ -172,7 +174,7 @@ export default function DashboardPage() {
                         id: (t.id as string) || String(Math.random()),
                         title: (t.description as string) || (t.title as string) || 'Expense',
                         amount: (t.amount as number) || 0,
-                        payer: (t.paidBy as { name: string })?.name || (t.payer as { name?: string })?.name || (typeof t.payer === 'string' ? t.payer : null) || 'Unknown',
+                        payer: (t.paidBy as { name?: string })?.name || (t.payer as { name?: string })?.name || (typeof t.paidBy === 'string' ? (t.paidBy as string) : null) || (typeof t.payer === 'string' ? (t.payer as string) : null) || 'Unknown',
                         category: (t.category as string) || 'general',
                         method: (t.paymentMethod as string) || 'cash',
                         time: (t.createdAt as string) || new Date().toISOString(),
@@ -243,24 +245,15 @@ export default function DashboardPage() {
                     >
                         <TiltCard maxTilt={4} scale={1.01} glare={true}>
                             <div
-                                className="noise-overlay card-highlight glow-pulse"
                                 style={{
                                     ...glassCard,
+                                    backdropFilter: 'none',
+                                    WebkitBackdropFilter: 'none',
                                     padding: 'var(--space-5)',
                                     background: 'linear-gradient(135deg, rgba(var(--accent-500-rgb), 0.15) 0%, var(--bg-glass) 30%, rgba(var(--accent-500-rgb), 0.08) 60%, var(--bg-glass) 100%)',
                                     boxShadow: 'var(--shadow-card), 0 0 60px rgba(var(--accent-500-rgb), 0.1)',
                                 }}
                             >
-                                {/* Flowing mesh gradient overlay — Apple Card breathing effect */}
-                                <div
-                                    className="mesh-breathe"
-                                    style={{
-                                        position: 'absolute', inset: 0, borderRadius: 'inherit',
-                                        background: 'radial-gradient(ellipse 60% 50% at 20% 10%, rgba(var(--accent-500-rgb), 0.12) 0%, transparent 50%), radial-gradient(ellipse 50% 60% at 80% 80%, rgba(var(--accent-500-rgb), 0.08) 0%, transparent 50%), radial-gradient(ellipse 40% 40% at 50% 50%, rgba(var(--accent-500-rgb), 0.05) 0%, transparent 60%)',
-                                        pointerEvents: 'none',
-                                        opacity: 0.8,
-                                    }}
-                                />
                                 <div style={glassCardInner}>
                                     {/* Header row */}
                                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
@@ -457,6 +450,7 @@ export default function DashboardPage() {
                                                         <div style={{
                                                             fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)',
                                                             display: 'flex', gap: 4, alignItems: 'center', marginTop: 2,
+                                                            justifyContent: 'center',
                                                         }}>
                                                             <span>{txn.payer}</span>
                                                             <span style={{ opacity: 0.3 }}>·</span>

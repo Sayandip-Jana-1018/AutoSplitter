@@ -84,7 +84,7 @@ export function SpendingPieChart({ data = MOCK_CATEGORY_DATA }: { data?: Categor
                 </ResponsiveContainer>
             </div>
             {/* Legend */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginTop: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginTop: 'var(--space-2)', justifyContent: 'center' }}>
                 {data.map((d) => (
                     <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)' }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
@@ -209,7 +209,7 @@ export function MemberSpendChart({ data = MOCK_MEMBER_DATA }: { data?: MemberSpe
                             tick={{ fill: 'var(--fg-secondary)', fontSize: 12 }}
                             axisLine={false}
                             tickLine={false}
-                            width={50}
+                            width={80}
                         />
                         <Tooltip
                             content={({ payload, label }) => {
