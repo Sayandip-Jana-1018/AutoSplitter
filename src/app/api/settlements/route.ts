@@ -140,7 +140,7 @@ export async function GET(req: Request) {
             recorded,
             balances,
         });
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to compute settlements' }, { status: 500 });
     }
 }
@@ -235,6 +235,7 @@ export async function POST(req: Request) {
                 },
             });
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (prisma as any).groupMessage.create({
                 data: {
                     groupId: trip.group.id,

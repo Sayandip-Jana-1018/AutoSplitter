@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     UserPlus, Search, Send, Trash2, Share2,
-    Users, UserCheck, Inbox, X, ExternalLink,
-    Check, Copy, Link2, Loader2,
+    Users, UserCheck, Inbox, ExternalLink,
+    Loader2,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -54,7 +54,7 @@ function hashCode(str: string): string {
 }
 
 export default function ContactsPage() {
-    const { user: currentUser } = useCurrentUser();
+    useCurrentUser();
     const { toast } = useToast();
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(true);
@@ -363,6 +363,7 @@ export default function ContactsPage() {
                                     {/* Avatar — image or initials */}
                                     <div className={styles.contactAvatar} style={avatarImg ? { padding: 0, overflow: 'hidden' } : undefined}>
                                         {avatarImg ? (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
                                             <img
                                                 src={avatarImg}
                                                 alt={contact.name}

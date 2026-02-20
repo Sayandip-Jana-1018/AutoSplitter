@@ -36,9 +36,11 @@ export function useCurrentUser() {
 
     useEffect(() => {
         if (cachedUser) {
-            setUser(cachedUser);
-            setLoading(false);
-            return;
+            const t = setTimeout(() => {
+                setUser(cachedUser);
+                setLoading(false);
+            }, 0);
+            return () => clearTimeout(t);
         }
 
         if (!fetchPromise) {

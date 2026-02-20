@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Camera,
-    Upload,
     ScanLine,
     Check,
     X,
@@ -14,21 +13,18 @@ import {
     Sparkles,
     ShieldCheck,
     RotateCcw,
-    Smartphone,
     ImageIcon,
     Zap,
-    Cpu,
-    Globe,
     Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Button from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+
 import Badge from '@/components/ui/Badge';
-import { PaymentIcon, CategoryIcon, PAYMENT_ICONS } from '@/components/ui/Icons';
-import { formatCurrency, cn } from '@/lib/utils';
+import { PaymentIcon, PAYMENT_ICONS } from '@/components/ui/Icons';
+import { formatCurrency } from '@/lib/utils';
 import { parseTransactionText, type ParsedTransaction } from '@/lib/transactionParser';
 import SplitByItems from '@/components/features/SplitByItems';
+import { uploadReceipt } from '@/lib/supabase';
 
 type ScanState = 'idle' | 'loading' | 'result' | 'error';
 type ScanMode = 'basic' | 'advanced';
@@ -91,6 +87,7 @@ export default function ScanReceiptPage() {
     const [mounted, setMounted] = useState(false);
     const pendingFileRef = useRef<string | null>(null); // base64 for advanced
     const [showSplitByItems, setShowSplitByItems] = useState(false);
+    const fileObjRef = useRef<File | null>(null);
 
     useEffect(() => { setMounted(true); }, []);
 
@@ -115,23 +112,7 @@ export default function ScanReceiptPage() {
         }
     }, []);
 
-    const captureFrame = useCallback(() => {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        if (!video || !canvas) return;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.drawImage(video, 0, 0);
-        canvas.toBlob((blob) => {
-            if (blob) {
-                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-                closeCamera();
-                handleFile(file);
-            }
-        }, 'image/jpeg', 0.92);
-    }, []);
+
 
     const closeCamera = useCallback(() => {
         if (streamRef.current) {
@@ -157,6 +138,7 @@ export default function ScanReceiptPage() {
 
         // Show preview
         const reader = new FileReader();
+        fileObjRef.current = file; // Store the original file for Supabase upload
         reader.onload = (e) => {
             const base64 = e.target?.result as string;
             setPreview(base64);
@@ -200,6 +182,24 @@ export default function ScanReceiptPage() {
             }
         }
     }, [scanMode]);
+
+    const captureFrame = useCallback(() => {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (!video || !canvas) return;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(video, 0, 0);
+        canvas.toBlob((blob) => {
+            if (blob) {
+                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                closeCamera();
+                handleFile(file);
+            }
+        }, 'image/jpeg', 0.92);
+    }, [closeCamera, handleFile]);
 
     const handleAdvancedScan = async (base64Image: string) => {
         setScanState('loading');
@@ -251,13 +251,25 @@ export default function ScanReceiptPage() {
         setPreview(null);
         setErrorMsg('');
         pendingFileRef.current = null;
+        fileObjRef.current = null;
         if (cameraRef.current) cameraRef.current.value = '';
         if (galleryRef.current) galleryRef.current.value = '';
     };
 
+    const uploadAndGetReceiptUrl = async (): Promise<string | null> => {
+        if (!fileObjRef.current) return null;
+        // Generate a unique path: receipts/timestamp_filename.jpg
+        const ext = fileObjRef.current.name.split('.').pop() || 'jpg';
+        const uniqueName = `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.${ext}`;
+        return await uploadReceipt(fileObjRef.current, uniqueName);
+    };
+
     const handleSaveToExpense = async () => {
         setSaving(true);
+        let receiptUrl = await uploadAndGetReceiptUrl();
         const params = new URLSearchParams();
+        if (receiptUrl) params.set('receiptUrl', receiptUrl);
+
         if (scanMode === 'advanced' && advancedResult) {
             if (advancedResult.total) params.set('amount', String(advancedResult.total / 100));
             if (advancedResult.merchant) params.set('title', advancedResult.merchant);
@@ -591,6 +603,7 @@ export default function ScanReceiptPage() {
                                     borderRadius: 'var(--radius-xl)',
                                     marginBottom: 'var(--space-4)',
                                 }}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         src={preview}
                                         alt="Receipt preview"
@@ -1234,11 +1247,14 @@ export default function ScanReceiptPage() {
                     onClose={() => setShowSplitByItems(false)}
                     items={advancedResult.items}
                     taxes={advancedResult.taxes}
-                    subtotal={advancedResult.subtotal}
                     total={advancedResult.total}
                     merchant={advancedResult.merchant}
-                    onCreateExpense={(splits, title, total) => {
+                    onCreateExpense={async (splits, title, total) => {
                         setShowSplitByItems(false);
+                        setSaving(true);
+
+                        let receiptUrl = await uploadAndGetReceiptUrl();
+
                         // Navigate to add expense with pre-filled split data
                         const params = new URLSearchParams({
                             title,
@@ -1246,6 +1262,9 @@ export default function ScanReceiptPage() {
                             category: advancedResult.category || 'food',
                             splitData: JSON.stringify(splits),
                         });
+
+                        if (receiptUrl) params.set('receiptUrl', receiptUrl);
+
                         router.push(`/transactions/new?${params.toString()}`);
                     }}
                 />

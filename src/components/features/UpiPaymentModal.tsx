@@ -28,7 +28,6 @@ export default function UpiPaymentModal({
     onPaymentComplete,
 }: UpiPaymentModalProps) {
     const [step, setStep] = useState<Step>('choose');
-    const [upiUrl, setUpiUrl] = useState('');
     const [qrData, setQrData] = useState('');
     const [payeeUpiId, setPayeeUpiId] = useState('');
     const [manualUpiId, setManualUpiId] = useState('');
@@ -43,7 +42,6 @@ export default function UpiPaymentModal({
     useEffect(() => {
         if (!isOpen) {
             setStep('choose');
-            setUpiUrl('');
             setQrData('');
             setUtrNumber('');
             setError('');
@@ -83,7 +81,7 @@ export default function UpiPaymentModal({
             } else {
                 setError('Enter UPI ID to continue'); setLoading(false); return;
             }
-            setUpiUrl(generatedUpiUrl); setQrData(generatedQrData); setPayeeUpiId(resolvedUpiId);
+            setQrData(generatedQrData); setPayeeUpiId(resolvedUpiId);
             setStep('paying');
             if (isMobile && generatedUpiUrl) { window.location.href = generatedUpiUrl; } else { setShowQr(true); }
         } catch { setError('Network error'); } finally { setLoading(false); }

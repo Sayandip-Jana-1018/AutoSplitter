@@ -14,11 +14,9 @@ interface Particle {
 
 export default function ParticleBackground({
     count = 40,
-    color = 'var(--accent-500)',
     className,
 }: {
     count?: number;
-    color?: string;
     className?: string;
 }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);

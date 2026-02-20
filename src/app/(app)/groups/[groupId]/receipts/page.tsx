@@ -8,7 +8,7 @@ import {
     Filter, ChevronDown,
 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
-import Badge from '@/components/ui/Badge';
+
 import { formatCurrency, timeAgo } from '@/lib/utils';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -252,6 +252,7 @@ export default function ReceiptGalleryPage() {
                                 position: 'relative',
                                 overflow: 'hidden',
                             }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={receipt.receiptUrl}
                                     alt={receipt.title}

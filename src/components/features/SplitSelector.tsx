@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Equal, Percent, PenLine, Users } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 
 export type SplitMode = 'equal' | 'percentage' | 'custom';
 
@@ -14,14 +14,12 @@ interface SplitMember {
     included: boolean;
     value: number; // percentage (0-100) or custom paise amount
 }
-
 interface SplitSelectorProps {
     totalAmount: number; // in paise
     members: { id: string; name: string }[];
-    onChange?: (splits: { memberId: string; amount: number }[]) => void;
 }
 
-export default function SplitSelector({ totalAmount, members, onChange }: SplitSelectorProps) {
+export default function SplitSelector({ totalAmount, members }: SplitSelectorProps) {
     const [mode, setMode] = useState<SplitMode>('equal');
     const [splitMembers, setSplitMembers] = useState<SplitMember[]>(
         members.map((m) => ({ ...m, included: true, value: 0 }))

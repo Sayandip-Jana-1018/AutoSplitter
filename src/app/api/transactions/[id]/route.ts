@@ -57,7 +57,7 @@ export async function GET(
         }
 
         return NextResponse.json(transaction);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to fetch transaction' }, { status: 500 });
     }
 }
@@ -110,7 +110,7 @@ export async function PUT(
         if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
 
         // Update transaction
-        const updated = await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx) => {
             const txn = await tx.transaction.update({
                 where: { id },
                 data: updateData,
@@ -184,7 +184,7 @@ export async function DELETE(
         await prisma.transaction.delete({ where: { id } });
 
         return NextResponse.json({ message: 'Transaction deleted' });
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 });
     }
 }

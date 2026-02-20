@@ -48,7 +48,7 @@ export async function GET() {
         }));
 
         return NextResponse.json(enriched);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to fetch groups' }, { status: 500 });
     }
 }
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(group, { status: 201 });
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to create group' }, { status: 500 });
     }
 }

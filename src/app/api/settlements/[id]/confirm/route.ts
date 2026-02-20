@@ -72,6 +72,7 @@ export async function POST(
 
         // ── Auto-post settlement message in group chat ──
         if (settlement.trip?.groupId) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (prisma as any).groupMessage.create({
                 data: {
                     groupId: settlement.trip.groupId,

@@ -4,21 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
-    TrendingUp,
-    TrendingDown,
     Users,
     Receipt,
     ArrowRightLeft,
     Plus,
     ArrowRight,
     BarChart3,
-    Sparkles,
     Inbox,
     RefreshCw,
     Wallet,
     Zap,
 } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { AvatarGroup } from '@/components/ui/Avatar';
 import { CategoryIcon, PaymentIcon, PAYMENT_ICONS } from '@/components/ui/Icons';
@@ -32,6 +28,9 @@ import TiltCard from '@/components/ui/TiltCard';
 import ParticleBackground from '@/components/ui/ParticleBackground';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { formatCurrency, timeAgo } from '@/lib/utils';
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 /* ── Animation helpers ── */
 const fadeUp = {
@@ -43,11 +42,6 @@ const staggerContainer = {
     animate: {
         transition: { staggerChildren: 0.08 },
     },
-};
-
-const scaleIn = {
-    initial: { opacity: 0, scale: 0.92 },
-    animate: { opacity: 1, scale: 1 },
 };
 
 /* ── Types ── */
@@ -82,13 +76,27 @@ interface GroupMember {
 /* ── Smart Greeting ── */
 function useSmartGreeting(): { text: string; emoji: string } {
     const [greeting, setGreeting] = useState({ text: 'Welcome', emoji: '👋' });
+
     useEffect(() => {
+        let mounted = true;
         const hour = new Date().getHours();
-        if (hour < 6) setGreeting({ text: 'Good night', emoji: '🌙' });
-        else if (hour < 12) setGreeting({ text: 'Good morning', emoji: '🌅' });
-        else if (hour < 17) setGreeting({ text: 'Good afternoon', emoji: '🌞' });
-        else if (hour < 21) setGreeting({ text: 'Good evening', emoji: '🌇' });
-        else setGreeting({ text: 'Good night', emoji: '🌙' });
+        let text = 'Good night';
+        let emoji = '🌙';
+
+        if (hour < 6) { text = 'Good night'; emoji = '🌙'; }
+        else if (hour < 12) { text = 'Good morning'; emoji = '🌅'; }
+        else if (hour < 17) { text = 'Good afternoon'; emoji = '🌞'; }
+        else if (hour < 21) { text = 'Good evening'; emoji = '🌇'; }
+
+        const timer = setTimeout(() => {
+            if (mounted) {
+                setGreeting({ text, emoji });
+            }
+        }, 0);
+        return () => {
+            mounted = false;
+            clearTimeout(timer);
+        };
     }, []);
     return greeting;
 }
@@ -127,7 +135,7 @@ export default function DashboardPage() {
     const ptr = usePullToRefresh({
         onRefresh: async () => {
             haptics.medium();
-            await fetchDashboardData();
+            await Promise.all([mutateGroups(), mutateTxns(), mutateSettlements()]);
         },
     });
 
@@ -137,97 +145,82 @@ export default function DashboardPage() {
     const heroOpacity = useTransform(scrollY, [0, 200], [1, 0.8]);
     const heroY = useTransform(scrollY, [0, 200], [0, 10]);
 
-    const fetchDashboardData = useCallback(async () => {
-        try {
-            const [groupsRes, txnsRes, settlementsRes] = await Promise.allSettled([
-                fetch('/api/groups'),
-                fetch('/api/transactions?limit=5'),
-                fetch('/api/settlements'),
-            ]);
-
-            if (groupsRes.status === 'fulfilled' && groupsRes.value.ok) {
-                const groupsData = await groupsRes.value.json();
-                const groups = groupsData.groups || groupsData || [];
-                setStats(prev => ({ ...prev, activeTrips: groups.length }));
-                const allMembers: GroupMember[] = [];
-                for (const group of groups) {
-                    if (group.members) {
-                        for (const m of group.members) {
-                            const name = m.user?.name || m.name || 'Unknown';
-                            const image = m.user?.image || m.image || null;
-                            if (!allMembers.find(am => am.name === name)) {
-                                allMembers.push({ name, image });
-                            }
-                        }
-                    }
-                }
-                setMembers(allMembers);
-            }
-
-            if (txnsRes.status === 'fulfilled' && txnsRes.value.ok) {
-                const txnsData = await txnsRes.value.json();
-                const txns = txnsData.transactions || txnsData || [];
-                let totalSpent = 0;
-                const recentList: Transaction[] = txns.slice(0, 5).map((t: Record<string, unknown>) => {
-                    totalSpent += (t.amount as number) || 0;
-                    return {
-                        id: (t.id as string) || String(Math.random()),
-                        title: (t.description as string) || (t.title as string) || 'Expense',
-                        amount: (t.amount as number) || 0,
-                        payer: (t.paidBy as { name?: string })?.name || (t.payer as { name?: string })?.name || (typeof t.paidBy === 'string' ? (t.paidBy as string) : null) || (typeof t.payer === 'string' ? (t.payer as string) : null) || 'Unknown',
-                        category: (t.category as string) || 'general',
-                        method: (t.paymentMethod as string) || 'cash',
-                        time: (t.createdAt as string) || new Date().toISOString(),
-                    };
-                });
-                setRecentTxns(recentList);
-                setStats(prev => ({ ...prev, totalSpent }));
-            }
-
-            if (settlementsRes.status === 'fulfilled' && settlementsRes.value.ok) {
-                const settData = await settlementsRes.value.json();
-                const pending = Array.isArray(settData.computed) ? settData.computed : [];
-                let youOwe = 0;
-                let youAreOwed = 0;
-                const settList: Settlement[] = pending.map((s: Record<string, unknown>) => {
-                    const fromId = (s.from as string) || '';
-                    const toId = (s.to as string) || '';
-                    const amount = (s.amount as number) || 0;
-                    if (currentUserId && fromId === currentUserId) youOwe += amount;
-                    if (currentUserId && toId === currentUserId) youAreOwed += amount;
-                    return { from: fromId, to: toId, amount };
-                });
-                setSettlements(settList);
-                setStats(prev => ({ ...prev, youOwe, youAreOwed }));
-            }
-        } catch (err) {
-            console.error('Dashboard fetch error:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    // Fast data fetching with SWR
+    const { data: groupsData, mutate: mutateGroups, isLoading: loadingGroups } = useSWR('/api/groups', fetcher);
+    const { data: txnsData, mutate: mutateTxns, isLoading: loadingTxns } = useSWR('/api/transactions?limit=5', fetcher);
+    const { data: settData, mutate: mutateSettlements, isLoading: loadingSett } = useSWR('/api/settlements', fetcher);
 
     useEffect(() => {
-        fetchDashboardData();
-    }, [fetchDashboardData]);
+        const groups = groupsData?.groups || groupsData || [];
+        const txns = txnsData?.transactions || txnsData || [];
+        const pending = Array.isArray(settData?.computed) ? settData.computed : [];
 
+        let newActiveTrips = groups.length;
+        const allMembers: GroupMember[] = [];
+        for (const group of groups) {
+            if (group.members) {
+                for (const m of group.members) {
+                    const name = m.user?.name || m.name || 'Unknown';
+                    const image = m.user?.image || m.image || null;
+                    if (!allMembers.find(am => am.name === name)) {
+                        allMembers.push({ name, image });
+                    }
+                }
+            }
+        }
+        setMembers(allMembers);
 
+        let newTotalSpent = 0;
+        const recentList: Transaction[] = txns.slice(0, 5).map((t: Record<string, unknown>) => {
+            newTotalSpent += (t.amount as number) || 0;
+            return {
+                id: (t.id as string) || String(Math.random()),
+                title: (t.description as string) || (t.title as string) || 'Expense',
+                amount: (t.amount as number) || 0,
+                payer: (t.paidBy as { name?: string })?.name || (t.payer as { name?: string })?.name || (typeof t.paidBy === 'string' ? (t.paidBy as string) : null) || (typeof t.payer === 'string' ? (t.payer as string) : null) || 'Unknown',
+                category: (t.category as string) || 'general',
+                method: (t.paymentMethod as string) || 'cash',
+                time: (t.createdAt as string) || new Date().toISOString(),
+            };
+        });
+        setRecentTxns(recentList);
+
+        let newYouOwe = 0;
+        let newYouAreOwed = 0;
+        const settList: Settlement[] = pending.map((s: Record<string, unknown>) => {
+            const fromId = (s.from as string) || '';
+            const toId = (s.to as string) || '';
+            const amount = (s.amount as number) || 0;
+            if (currentUserId && fromId === currentUserId) newYouOwe += amount;
+            if (currentUserId && toId === currentUserId) newYouAreOwed += amount;
+            return { from: fromId, to: toId, amount };
+        });
+        setSettlements(settList);
+
+        setStats({
+            activeTrips: newActiveTrips,
+            totalSpent: newTotalSpent,
+            youOwe: newYouOwe,
+            youAreOwed: newYouAreOwed,
+        });
+    }, [groupsData, txnsData, settData, currentUserId]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
-        await fetchDashboardData();
+        await Promise.all([mutateGroups(), mutateTxns(), mutateSettlements()]);
         setIsRefreshing(false);
     };
 
-    const hasData = recentTxns.length > 0 || settlements.length > 0 || stats.activeTrips > 0;
     const netBalance = stats.youAreOwed - stats.youOwe;
+
+    const isLoadingPage = loadingGroups || loadingTxns || loadingSett;
 
     return (
         <div ref={ptr.containerRef} style={{ overflow: 'auto', position: 'relative', height: '100%' }}>
             <ParticleBackground count={30} className="fixed inset-0 pointer-events-none" />
             <PullToRefreshIndicator pullDistance={ptr.pullDistance} refreshing={ptr.refreshing} />
 
-            {loading ? (
+            {isLoadingPage && (!groupsData || !txnsData || !settData) ? (
                 <div style={{ padding: 'var(--space-5)' }}>
                     <DashboardSkeleton />
                 </div>

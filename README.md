@@ -22,7 +22,7 @@ graph TB
 
     subgraph Components["🧩 Component Library"]
         UI["UI Components<br/>(Card, Button, Avatar, Modal, Toast,<br/>AmountPad, Confetti, GlobalSearch,<br/>PullToRefresh, Skeleton, Icons, EmptyState)"]
-        Features["Feature Components<br/>(OnboardingTour, ThemeSelector,<br/>ClipboardBanner, NotificationBanner,<br/>NotificationPanel, AIChatPanel,<br/>SplitSelector, GroupInvite,<br/>SettlementGraph)"]
+        Features["Feature Components<br/>(OnboardingTour, ThemeSelector,<br/>ClipboardBanner, NotificationBanner,<br/>NotificationPanel, AIChatPanel,<br/>SplitSelector, GroupInvite,<br/>SettlementGraph, SplitByItems)"]
         Charts["Charts<br/>(SpendingCharts via Recharts)"]
     end
 
@@ -146,7 +146,7 @@ erDiagram
         string id PK
         string tripId FK
         string payerId FK
-        int amount "in paise"
+        long amount "in paise"
         string title
         string category
         string method
@@ -159,7 +159,7 @@ erDiagram
         string id PK
         string transactionId FK
         string userId FK
-        int amount "in paise"
+        long amount "in paise"
     }
 
     Settlement {
@@ -167,7 +167,7 @@ erDiagram
         string tripId FK
         string fromId FK
         string toId FK
-        int amount "in paise"
+        long amount "in paise"
         string status
         string method
         datetime deletedAt "soft delete"
@@ -187,7 +187,7 @@ erDiagram
         string id PK
         string userId FK
         string category
-        int amount "in paise"
+        long amount "in paise"
         int month
         int year
     }
@@ -233,7 +233,7 @@ erDiagram
 | **🤖 AI Chat Assistant** | Gemini-powered conversational assistant — ask about spending, debts, groups in natural language |
 | **Receipt Scanner (OCR)** | Dual-mode scanner: **Basic** (Tesseract.js, on-device) and **Advanced** (OpenAI Vision API, cloud-based with itemized receipt parsing) |
 | **Advanced Receipt AI** | GPT-4o-mini Vision extracts merchant, date, individual items with quantities, taxes, subtotal, total, and auto-categorizes |
-| **Smart Receipt Split** | After advanced scan, split receipt items among group members — per-item assignment with proportional tax distribution |
+| **Smart Receipt Split** | Interactive itemized splitting: scan a receipt, then drag/tap to assign items to specific members with auto-calculated taxes |
 | **Settlement Chat Messages** | Auto-post payment messages in group chat when settlements are completed, with green accent styling |
 | **Scan Mode Toggle** | Premium pill-style toggle (⚡ Basic / ✨ AI Scan) with mode description and dynamic privacy notes |
 | **Live Camera Capture** | getUserMedia viewfinder with real-time scan guide overlay |

@@ -15,7 +15,7 @@ const CATEGORY_LABELS: Record<string, string> = {
     education: 'Education', other: 'Other',
 };
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
         const session = await auth();
         if (!session?.user?.email) {

@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Search, Inbox, Image as ImageIcon, Calendar, Receipt } from 'lucide-react';
+import { ArrowLeft, Search, Image as ImageIcon, Calendar, Receipt } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { formatCurrency, timeAgo } from '@/lib/utils';
 
 /* ── Glassmorphic styles ── */
@@ -59,8 +60,8 @@ export default function ReceiptGalleryPage() {
 
                 // Merge: transactions with receiptUrl + localStorage thumbnails
                 const items: ReceiptItem[] = txns
-                    .filter((t: any) => t.receiptUrl || localReceipts[t.id])
-                    .map((t: any) => ({
+                    .filter((t: ReceiptItem & { receiptUrl?: string | null }) => t.receiptUrl || localReceipts[t.id])
+                    .map((t: ReceiptItem & { receiptUrl?: string | null }) => ({
                         id: t.id,
                         title: t.title,
                         amount: t.amount,
@@ -168,14 +169,15 @@ export default function ReceiptGalleryPage() {
                                     overflow: 'hidden',
                                 }}>
                                     {r.receiptUrl || r.localThumb ? (
-                                        <img
-                                            src={r.receiptUrl || r.localThumb}
-                                            alt={r.title}
-                                            style={{
-                                                width: '100%', height: '100%',
-                                                objectFit: 'cover',
-                                            }}
-                                        />
+                                        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                                            <Image
+                                                src={r.receiptUrl || r.localThumb!}
+                                                alt={r.title}
+                                                fill
+                                                sizes="(max-width: 768px) 50vw, 33vw"
+                                                style={{ objectFit: 'cover' }}
+                                            />
+                                        </div>
                                     ) : (
                                         <ImageIcon size={32} style={{ color: 'var(--fg-muted)' }} />
                                     )}
@@ -268,11 +270,14 @@ export default function ReceiptGalleryPage() {
                         >
                             {/* Image */}
                             {(selectedReceipt.receiptUrl || selectedReceipt.localThumb) && (
-                                <img
-                                    src={selectedReceipt.receiptUrl || selectedReceipt.localThumb}
-                                    alt={selectedReceipt.title}
-                                    style={{ width: '100%', height: 'auto', maxHeight: 400, objectFit: 'contain', background: '#000' }}
-                                />
+                                <div style={{ position: 'relative', width: '100%', height: '400px', background: '#000' }}>
+                                    <Image
+                                        src={selectedReceipt.receiptUrl || selectedReceipt.localThumb!}
+                                        alt={selectedReceipt.title}
+                                        fill
+                                        style={{ objectFit: 'contain' }}
+                                    />
+                                </div>
                             )}
                             <div style={{ padding: 'var(--space-4)' }}>
                                 <div style={{ fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: 4 }}>

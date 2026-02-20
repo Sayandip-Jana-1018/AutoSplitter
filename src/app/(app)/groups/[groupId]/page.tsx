@@ -6,9 +6,7 @@ import {
     ArrowLeft,
     Plus,
     Users,
-    Receipt,
     ArrowRightLeft,
-    Settings,
     Share2,
     Copy,
     Check,
@@ -22,18 +20,17 @@ import {
     Trash2,
     UserPlus,
     Send,
-    MessageCircle,
     CreditCard,
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import Avatar, { AvatarGroup } from '@/components/ui/Avatar';
+import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
-import { formatCurrency, timeAgo, cn } from '@/lib/utils';
+import { formatCurrency, timeAgo } from '@/lib/utils';
 import { QRCodeSVG } from 'qrcode.react';
 import GroupChat from '@/components/features/GroupChat';
 import UpiPaymentModal from '@/components/features/UpiPaymentModal';
@@ -624,7 +621,6 @@ export default function GroupDetailPage() {
                         {members.map((member, i) => {
                             const balance = group.balances[member.userId] || 0;
                             const isCurrentUser = member.userId === group.currentUserId;
-                            const isOwner = member.userId === group.members.find(m => m.role === 'admin')?.userId;
                             const canRemove = !isCurrentUser && group.currentUserId === group.members.find(m => m.role === 'admin')?.userId;
                             return (
                                 <motion.div

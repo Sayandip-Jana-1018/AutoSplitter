@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, Inbox, BarChart3 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { SpendingPieChart, DailySpendingChart, MemberSpendChart } from '@/components/charts/SpendingCharts';
+import { Loader2, Inbox } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const SpendingPieChart = dynamic(() => import('@/components/charts/SpendingCharts').then(mod => mod.SpendingPieChart), { ssr: false });
+const DailySpendingChart = dynamic(() => import('@/components/charts/SpendingCharts').then(mod => mod.DailySpendingChart), { ssr: false });
+const MemberSpendChart = dynamic(() => import('@/components/charts/SpendingCharts').then(mod => mod.MemberSpendChart), { ssr: false });
 import { CATEGORIES, formatCurrency } from '@/lib/utils';
 import ErrorState from '@/components/ui/ErrorState';
 
@@ -38,7 +41,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function AnalyticsPage() {
-    const router = useRouter();
+
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Palette, Moon, Sun, Bell, Shield, LogOut, ChevronRight, Smartphone, Check, Loader2, Save, Settings, Camera } from 'lucide-react';
+import { User, Palette, Moon, Sun, Bell, Shield, LogOut, ChevronRight, Smartphone, Check, Loader2, Save, Camera } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';

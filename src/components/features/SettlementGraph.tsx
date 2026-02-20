@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import Avatar from '@/components/ui/Avatar';
+
 import { formatCurrency, getAvatarColor } from '@/lib/utils';
 
 interface Settlement {

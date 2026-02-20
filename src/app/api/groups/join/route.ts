@@ -106,7 +106,7 @@ export async function GET(req: Request) {
         }
 
         return NextResponse.json(group);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to look up group' }, { status: 500 });
     }
 }

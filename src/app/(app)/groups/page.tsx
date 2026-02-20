@@ -3,13 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, UserPlus, Link2, Copy, Check, Users, Inbox, ArrowRight, Sparkles, Contact, LogIn } from 'lucide-react';
+import { Plus, UserPlus, Link2, Copy, Check, Users, Inbox, Contact, LogIn } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import { AvatarGroup } from '@/components/ui/Avatar';
 import { useToast } from '@/components/ui/Toast';
 import { formatCurrency, timeAgo } from '@/lib/utils';
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 const GROUP_EMOJIS = ['✈️', '🏖️', '🏠', '🍕', '🎮', '🏕️', '🎉', '🚗', '💼', '🎓', '🏋️', '🎵'];
 
@@ -38,8 +41,8 @@ interface GroupData {
 
 export default function GroupsPage() {
     const router = useRouter();
-    const [groups, setGroups] = useState<GroupData[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [joinInput, setJoinInput] = useState('');
+    const [joining, setJoining] = useState(false);
     const [showCreate, setShowCreate] = useState(false);
     const [creating, setCreating] = useState(false);
     const [groupName, setGroupName] = useState('');
@@ -47,25 +50,10 @@ export default function GroupsPage() {
     const [inviteLink, setInviteLink] = useState('');
     const [copied, setCopied] = useState(false);
     const [showJoin, setShowJoin] = useState(false);
-    const [joinInput, setJoinInput] = useState('');
-    const [joining, setJoining] = useState(false);
     const { toast } = useToast();
 
-    const fetchGroups = useCallback(async () => {
-        try {
-            const res = await fetch('/api/groups');
-            if (res.ok) {
-                const data = await res.json();
-                setGroups(Array.isArray(data) ? data : []);
-            }
-        } catch (err) {
-            console.error('Failed to fetch groups:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => { fetchGroups(); }, [fetchGroups]);
+    const { data: rawGroups, mutate: fetchGroups, isLoading: loading } = useSWR<GroupData[]>('/api/groups', fetcher);
+    const groups = Array.isArray(rawGroups) ? rawGroups : [];
 
     const handleCreate = async () => {
         if (!groupName.trim() || creating) return;
@@ -130,7 +118,7 @@ export default function GroupsPage() {
         }
     };
 
-    if (loading) {
+    if (loading && !rawGroups) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', padding: 'var(--space-4) 0' }}>
                 {[1, 2, 3].map(i => (

@@ -69,7 +69,10 @@ export default function Confetti({ active, duration = 3500, message, onComplete 
 
         // Haptic and message
         haptics.success();
-        if (message) setShowMessage(true);
+
+        if (message) {
+            setTimeout(() => setShowMessage(true), 0);
+        }
 
         const animate = () => {
             const elapsed = Date.now() - startTime;
@@ -106,7 +109,7 @@ export default function Confetti({ active, duration = 3500, message, onComplete 
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
         };
-    }, [active, duration, createParticles]);
+    }, [active, duration, createParticles, haptics, message, onComplete]);
 
     if (!active) return null;
 

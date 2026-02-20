@@ -3,8 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    X, Check, Users, ShoppingBag, ChevronDown,
-    ChevronUp, Receipt, Loader2, Sparkles,
+    X, Check, ShoppingBag, Loader2,
 } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
@@ -28,22 +27,15 @@ interface SplitByItemsProps {
     onClose: () => void;
     items: ReceiptItem[];
     taxes: Record<string, number>; // e.g. { GST: 500 }
-    subtotal: number;
     total: number;
     merchant: string | null;
     onCreateExpense: (splits: { userId: string; amount: number }[], title: string, total: number) => void;
 }
 
-/* ── Glass styles ── */
-const glass: React.CSSProperties = {
-    background: 'var(--bg-glass)',
-    backdropFilter: 'blur(24px) saturate(1.5)',
-    WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
-    border: '1px solid var(--border-glass)',
-};
+
 
 export default function SplitByItems({
-    isOpen, onClose, items, taxes, subtotal, total, merchant, onCreateExpense,
+    isOpen, onClose, items, taxes, total, merchant, onCreateExpense,
 }: SplitByItemsProps) {
     const [members, setMembers] = useState<MemberInfo[]>([]);
     const [loadingMembers, setLoadingMembers] = useState(true);
@@ -277,7 +269,7 @@ export default function SplitByItems({
                                         marginBottom: 12, paddingLeft: 0, textTransform: 'uppercase', letterSpacing: '0.04em',
                                         textAlign: 'center'
                                     }}>
-                                        Who's involved?
+                                        Who&apos;s involved?
                                     </div>
                                     <div style={{
                                         display: 'flex', gap: 16, overflowX: 'auto',

@@ -20,12 +20,13 @@ export default function OfflineIndicator() {
         };
 
         // Check initial state
-        setIsOnline(navigator.onLine);
+        const t = setTimeout(() => setIsOnline(navigator.onLine), 0);
 
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
         return () => {
+            clearTimeout(t);
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };

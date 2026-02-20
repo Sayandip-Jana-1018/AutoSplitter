@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 

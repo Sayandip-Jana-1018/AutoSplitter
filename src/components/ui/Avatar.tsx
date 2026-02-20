@@ -28,6 +28,7 @@ export default function Avatar({ name, image, size = 'md', ring, className }: Av
             title={name}
         >
             {showImage ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                     src={image}
                     alt={name}

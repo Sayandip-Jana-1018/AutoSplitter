@@ -172,6 +172,9 @@ model Transaction {
   deletedAt DateTime? // soft delete
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([tripId])
+  @@index([payerId])
 }
 
 model SplitItem {
@@ -184,6 +187,8 @@ model SplitItem {
   user        User        @relation(fields: [userId], references: [id])
 
   @@unique([transactionId, userId])
+  @@index([transactionId])
+  @@index([userId])
 }
 
 model Settlement {
@@ -205,6 +210,10 @@ model Settlement {
   deletedAt DateTime? // soft delete
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([tripId])
+  @@index([fromId])
+  @@index([toId])
 }
 
 model Contact {

@@ -166,18 +166,22 @@ export function useTheme() {
         const savedTheme = localStorage.getItem(THEME_KEY) as Theme | null;
         const savedPalette = localStorage.getItem(PALETTE_KEY) as PaletteId | null;
 
-        if (savedTheme) {
-            setThemeState(savedTheme);
-        } else {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            setThemeState(prefersDark ? 'dark' : 'light');
-        }
+        const t = setTimeout(() => {
+            if (savedTheme) {
+                setThemeState(savedTheme);
+            } else {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                setThemeState(prefersDark ? 'dark' : 'light');
+            }
 
-        if (savedPalette) {
-            setPaletteState(savedPalette);
-        }
+            if (savedPalette) {
+                setPaletteState(savedPalette);
+            }
 
-        setMounted(true);
+            setMounted(true);
+        }, 0);
+
+        return () => clearTimeout(t);
     }, []);
 
     // Apply to document

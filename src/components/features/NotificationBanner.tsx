@@ -24,36 +24,44 @@ export default function NotificationBanner() {
     const haptics = useHaptics();
 
     // Prevent hydration mismatch — only render after mount
-    useEffect(() => { setMounted(true); }, []);
+    useEffect(() => {
+        const timer = setTimeout(() => setMounted(true), 0);
+        return () => clearTimeout(timer);
+    }, []);
 
     // Fetch current user
     useEffect(() => {
+        let isMounted = true;
         fetch('/api/me')
             .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data?.id) setCurrentUserId(data.id); })
+            .then(data => { if (isMounted && data?.id) setCurrentUserId(data.id); })
             .catch(() => { });
+        return () => { isMounted = false; };
     }, []);
 
     // Fetch pending settlements
     useEffect(() => {
         if (!currentUserId) return;
-        setDataLoaded(false);
+        let isMounted = true;
+        if (isMounted) setTimeout(() => setDataLoaded(false), 0);
         fetch('/api/settlements')
             .then(r => r.ok ? r.json() : { computed: [] })
             .then(data => {
+                if (!isMounted) return;
                 const pending = (data.computed || [])
-                    .filter((s: any) => s.from === currentUserId || s.to === currentUserId)
-                    .map((s: any) => ({
-                        fromId: s.from,
-                        fromName: s.fromName || 'Someone',
-                        toId: s.to,
-                        toName: s.toName || 'Someone',
-                        amount: s.amount,
+                    .filter((s: Record<string, unknown>) => s.from === currentUserId || s.to === currentUserId)
+                    .map((s: Record<string, unknown>) => ({
+                        fromId: String(s.from || ''),
+                        fromName: String(s.fromName || 'Someone'),
+                        toId: String(s.to || ''),
+                        toName: String(s.toName || 'Someone'),
+                        amount: Number(s.amount || 0),
                     }));
                 setSettlements(pending);
                 setDataLoaded(true);
             })
-            .catch(() => { setDataLoaded(true); });
+            .catch(() => { if (isMounted) setDataLoaded(true); });
+        return () => { isMounted = false; };
     }, [currentUserId]);
 
     // Auto-cycle through settlements

@@ -174,7 +174,7 @@ export default function GlobalSearch() {
                             <div style={{ maxHeight: 400, overflowY: 'auto', padding: 'var(--space-2)' }}>
                                 {query.length > 0 && !searching && !hasResults && (
                                     <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--fg-muted)', fontSize: 'var(--text-sm)' }}>
-                                        No results found for "{query}"
+                                        No results found for &quot;{query}&quot;
                                     </div>
                                 )}
 

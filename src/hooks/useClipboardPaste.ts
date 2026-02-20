@@ -46,9 +46,12 @@ export function useClipboardPaste() {
         window.addEventListener('focus', handleFocus);
 
         // Also check on initial mount
-        checkClipboard();
+        const t = setTimeout(() => checkClipboard(), 0);
 
-        return () => window.removeEventListener('focus', handleFocus);
+        return () => {
+            clearTimeout(t);
+            window.removeEventListener('focus', handleFocus);
+        };
     }, [checkClipboard]);
 
     const dismiss = useCallback(() => {

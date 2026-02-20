@@ -24,6 +24,7 @@ const CreateTransactionSchema = z.object({
     category: z.string().default('other'),
     method: z.string().default('cash'),
     description: z.string().optional(),
+    receiptUrl: z.string().url().optional(),
     splitType: z.enum(['equal', 'percentage', 'custom']).default('equal'),
     splitAmong: z.array(z.string()).optional(), // subset of member IDs to split among
     splits: z.array(z.object({
@@ -91,7 +92,7 @@ export async function GET(req: Request) {
         });
 
         return NextResponse.json(transactions);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 });
     }
 }
@@ -133,7 +134,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Trip not found or access denied' }, { status: 404 });
         }
 
-        const { title, amount, category, method, description, splitType, splitAmong, splits } = parsed.data;
+        const { title, amount, category, method, description, receiptUrl, splitType, splitAmong, splits } = parsed.data;
 
         // Calculate splits
         let splitData: { userId: string; amount: number }[] = [];
@@ -209,7 +210,7 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json(transaction, { status: 201 });
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to create transaction' }, { status: 500 });
     }
 }

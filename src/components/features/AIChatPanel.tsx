@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ArrowLeft, X, Send, Sparkles, Bot, User, Loader2,
+    ArrowLeft, X, Send, Sparkles, Bot, User,
     TrendingUp, Users, Wallet, Receipt, HelpCircle, Zap,
 } from 'lucide-react';
 import { isFeatureEnabled } from '@/lib/featureFlags';

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRightLeft, Check, Download, Share2, GitBranch, Inbox, Sparkles, CreditCard, Bell } from 'lucide-react';
+import { ArrowRightLeft, Check, Download, Share2, GitBranch, Inbox, CreditCard, Bell } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';

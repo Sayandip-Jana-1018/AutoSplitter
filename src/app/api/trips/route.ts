@@ -34,7 +34,7 @@ export async function GET(req: Request) {
         });
 
         return NextResponse.json(trips);
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to fetch trips' }, { status: 500 });
     }
 }
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(trip, { status: 201 });
-    } catch (error) {
+    } catch {
         return NextResponse.json({ error: 'Failed to create trip' }, { status: 500 });
     }
 }

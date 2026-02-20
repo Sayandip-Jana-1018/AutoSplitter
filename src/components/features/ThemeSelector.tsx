@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Moon, Palette, Check, GripHorizontal } from 'lucide-react';
+import { Sun, Moon, Palette, Check } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useThemeContext, COLOR_PALETTES } from '@/components/providers/ThemeProvider';
 import { useToast } from '@/components/ui/Toast';
@@ -26,7 +26,10 @@ export default function ThemeSelector() {
     }, [open, showShimmer]);
 
     // Mark as mounted (prevents hydration mismatch for theme-dependent content)
-    useEffect(() => { setMounted(true); }, []);
+    useEffect(() => {
+        const t = setTimeout(() => setMounted(true), 0);
+        return () => clearTimeout(t);
+    }, []);
 
     // Detect mobile viewport
     useEffect(() => {
@@ -40,7 +43,11 @@ export default function ThemeSelector() {
     useEffect(() => {
         if (open) {
             const idx = COLOR_PALETTES.findIndex((p) => p.id === palette);
-            setFocusedIndex(idx >= 0 ? idx : 0);
+            const t = setTimeout(() => setFocusedIndex(idx >= 0 ? idx : 0), 0);
+            return () => clearTimeout(t);
+        } else {
+            const t = setTimeout(() => setFocusedIndex(-1), 0);
+            return () => clearTimeout(t);
         }
     }, [open, palette]);
 

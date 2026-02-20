@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Send, Bell, Loader2, Receipt, ArrowRightLeft,
-    MessageCircle, AlertCircle, CreditCard, Sparkles,
+    Send, Bell, Loader2, Receipt,
+    MessageCircle, AlertCircle, CreditCard,
     ChevronDown,
 } from 'lucide-react';
 import { formatCurrency, timeAgo } from '@/lib/utils';

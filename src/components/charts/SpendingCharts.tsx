@@ -11,9 +11,8 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Legend,
 } from 'recharts';
-import { motion } from 'framer-motion';
+
 import { Card } from '@/components/ui/Card';
 import { formatCurrency } from '@/lib/utils';
 
@@ -223,7 +222,7 @@ export function MemberSpendChart({ data = MOCK_MEMBER_DATA }: { data?: MemberSpe
                                         fontSize: 'var(--text-xs)',
                                     }}>
                                         <div style={{ fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                                        {payload.map((p: any) => (
+                                        {payload.map((p: { name: string; value: number }) => (
                                             <div key={p.name}>
                                                 {p.name === 'paid' ? 'Paid' : 'Fair share'}: {formatCurrency(p.value)}
                                             </div>

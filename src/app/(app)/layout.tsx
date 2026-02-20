@@ -9,7 +9,7 @@ import {
     Receipt,
     ArrowRightLeft,
     Settings,
-    Plus,
+
     Menu,
     LogOut,
     X,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, ArrowUpDown, ScanLine, Inbox, Trash2, Pencil, Check, X, Clock, List, ChevronRight, Users, CreditCard } from 'lucide-react';
+import { Plus, Search, ArrowUpDown, ScanLine, Inbox, Trash2, Pencil, Check, X, Clock, List, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import { CategoryIcon, PaymentIcon, CATEGORY_ICONS, PAYMENT_ICONS } from '@/components/ui/Icons';
@@ -48,6 +48,7 @@ export default function TransactionsPage() {
     const [editAmount, setEditAmount] = useState('');
     const [savingEdit, setSavingEdit] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     const startEdit = (txn: TransactionData) => {
         setEditingId(txn.id);
@@ -77,7 +78,7 @@ export default function TransactionsPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Delete this expense?')) return;
+        setDeleteConfirmId(null);
         setDeletingId(id);
         try {
             const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
@@ -408,33 +409,41 @@ export default function TransactionsPage() {
                                                             <Users size={9} /> ÷{txn.splits?.length || 1}
                                                         </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); startEdit(txn); }}
                                                             style={{
-                                                                border: 'none', background: 'none', cursor: 'pointer',
-                                                                color: 'var(--fg-muted)', padding: 4, borderRadius: 'var(--radius-md)',
-                                                                opacity: 0.4, transition: 'all 0.2s', lineHeight: 0,
+                                                                border: 'none', cursor: 'pointer',
+                                                                background: 'rgba(var(--accent-500-rgb), 0.08)',
+                                                                color: 'var(--accent-400)',
+                                                                padding: 6, borderRadius: 'var(--radius-lg)',
+                                                                opacity: 0.85, transition: 'all 0.2s', lineHeight: 0,
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                width: 30, height: 30,
                                                             }}
-                                                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--accent-400)'; }}
-                                                            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = 'var(--fg-muted)'; }}
+                                                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.15)'; }}
+                                                            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.08)'; }}
                                                             title="Edit"
                                                         >
-                                                            <Pencil size={12} />
+                                                            <Pencil size={14} />
                                                         </button>
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); handleDelete(txn.id); }}
+                                                            onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(txn.id); }}
                                                             disabled={deletingId === txn.id}
                                                             style={{
-                                                                border: 'none', background: 'none', cursor: 'pointer',
-                                                                color: 'var(--fg-muted)', padding: 4, borderRadius: 'var(--radius-md)',
-                                                                opacity: deletingId === txn.id ? 0.2 : 0.4, transition: 'all 0.2s', lineHeight: 0,
+                                                                border: 'none', cursor: 'pointer',
+                                                                background: 'rgba(239, 68, 68, 0.08)',
+                                                                color: '#ef4444',
+                                                                padding: 6, borderRadius: 'var(--radius-lg)',
+                                                                opacity: deletingId === txn.id ? 0.3 : 0.85, transition: 'all 0.2s', lineHeight: 0,
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                width: 30, height: 30,
                                                             }}
-                                                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--color-error)'; }}
-                                                            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = 'var(--fg-muted)'; }}
+                                                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; }}
+                                                            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; }}
                                                             title="Delete"
                                                         >
-                                                            <Trash2 size={12} />
+                                                            <Trash2 size={14} />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -598,6 +607,94 @@ export default function TransactionsPage() {
                     </div>
                 </motion.div>
             )}
+
+            {/* ── Delete Confirmation Modal ── */}
+            <AnimatePresence>
+                {deleteConfirmId && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => setDeleteConfirmId(null)}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 9999,
+                            background: 'transparent',
+                            backdropFilter: 'blur(8px)',
+                            WebkitBackdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: 20,
+                        }}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.85, y: 30 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                                width: '100%', maxWidth: 340,
+                                background: 'var(--bg-elevated)',
+                                border: '1px solid var(--border-glass)',
+                                borderRadius: 24, padding: 28,
+                                boxShadow: '0 24px 64px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05)',
+                                textAlign: 'center',
+                            }}
+                        >
+                            {/* Icon */}
+                            <div style={{
+                                width: 56, height: 56, borderRadius: 16, margin: '0 auto 16px',
+                                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: '0 8px 24px rgba(239, 68, 68, 0.3)',
+                            }}>
+                                <Trash2 size={24} color="#fff" />
+                            </div>
+
+                            <h3 style={{
+                                fontSize: 18, fontWeight: 700, color: 'var(--fg-primary)', marginBottom: 8,
+                            }}>
+                                Delete Expense?
+                            </h3>
+                            <p style={{
+                                fontSize: 13.5, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 24,
+                            }}>
+                                This will permanently remove the expense and all its splits. This action cannot be undone.
+                            </p>
+
+                            {/* Buttons */}
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    style={{
+                                        flex: 1, padding: '12px 0', borderRadius: 14,
+                                        border: '1px solid var(--border-glass)',
+                                        background: 'var(--surface-card)', color: 'var(--fg-primary)',
+                                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(deleteConfirmId)}
+                                    style={{
+                                        flex: 1, padding: '12px 0', borderRadius: 14,
+                                        border: 'none',
+                                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                                        color: '#fff',
+                                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                                        boxShadow: '0 4px 16px rgba(239, 68, 68, 0.3)',
+                                        transition: 'all 0.2s',
+                                    }}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

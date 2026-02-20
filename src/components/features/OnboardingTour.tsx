@@ -99,16 +99,22 @@ export default function OnboardingTour() {
     // Update spotlight position
     useEffect(() => {
         if (!active) return;
-        const currentStep = TOUR_STEPS[step];
-        if (!currentStep) return;
+        const updateRect = () => {
+            const currentStep = TOUR_STEPS[step];
+            if (!currentStep) return;
+            const el = document.querySelector(currentStep.target);
+            if (el) {
+                const rect = el.getBoundingClientRect();
+                setSpotlightRect(rect);
+            } else {
+                setSpotlightRect(null);
+            }
+        };
 
-        const el = document.querySelector(currentStep.target);
-        if (el) {
-            const rect = el.getBoundingClientRect();
-            setSpotlightRect(rect);
-        } else {
-            setSpotlightRect(null);
-        }
+        // Defer read/write to next frame to avoid synchronous layout thrashing/setState
+        const frameId = requestAnimationFrame(updateRect);
+
+        return () => cancelAnimationFrame(frameId);
     }, [active, step]);
 
     const dismiss = useCallback(() => {

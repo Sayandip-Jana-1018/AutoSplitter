@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect, Suspense } from 'react';
+import { motion } from 'framer-motion';
 import { Delete, Check, ChevronDown, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Button from '@/components/ui/Button';
@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toast';
 import { PaymentIcon } from '@/components/ui/Icons';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { CATEGORIES, PAYMENT_METHODS, formatCurrency, toPaise, cn } from '@/lib/utils';
-import { z } from 'zod';
+
 import styles from './quickadd.module.css';
 
 interface GroupItem {
@@ -21,7 +21,7 @@ interface GroupItem {
     members: { user: { id: string; name: string | null; image: string | null } }[];
 }
 
-export default function QuickAddPage() {
+function QuickAddContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
@@ -57,6 +57,7 @@ export default function QuickAddPage() {
         const paramTitle = searchParams.get('title');
         const paramMethod = searchParams.get('method');
         const paramSplitData = searchParams.get('splitData');
+        const paramReceiptUrl = searchParams.get('receiptUrl');
 
         if (paramAmount) setAmount(paramAmount);
         if (paramTitle) setTitle(paramTitle);
@@ -247,7 +248,7 @@ export default function QuickAddPage() {
 
         setSaving(true);
         try {
-            const payload: any = {
+            const payload: Record<string, unknown> = {
                 tripId,
                 title: effectiveTitle,
                 amount: toPaise(numericAmount),
@@ -255,6 +256,11 @@ export default function QuickAddPage() {
                 method,
                 splitType,
             };
+
+            const paramReceiptUrl = searchParams.get('receiptUrl');
+            if (paramReceiptUrl) {
+                payload.receiptUrl = paramReceiptUrl;
+            }
 
             if (splitType === 'custom') {
                 payload.splits = customSplits;
@@ -643,5 +649,17 @@ export default function QuickAddPage() {
                 </div>
             </Modal>
         </div>
+    );
+}
+
+export default function QuickAddPage() {
+    return (
+        <Suspense fallback={
+            <div style={{ display: 'flex', height: '100dvh', alignItems: 'center', justifyContent: 'center' }}>
+                <Loader2 className="animate-spin" size={32} style={{ color: 'var(--fg-muted)' }} />
+            </div>
+        }>
+            <QuickAddContent />
+        </Suspense>
     );
 }
