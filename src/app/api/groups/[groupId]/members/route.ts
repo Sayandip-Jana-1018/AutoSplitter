@@ -60,6 +60,37 @@ export async function DELETE(
             },
         });
 
+        // Notify the removed user
+        await prisma.notification.create({
+            data: {
+                userId,
+                type: 'member_removed',
+                title: '🚪 Removed from group',
+                body: `You were removed from "${group.name}" by ${currentUser.name || 'an admin'}`,
+                link: '/groups', // Link to groups list since they can no longer access the specific group
+            },
+        });
+
+        // Notify remaining members
+        const remainingMemberIds = group.members
+            .filter(m => m.userId !== userId && m.userId !== currentUser.id)
+            .map(m => m.userId);
+
+        if (remainingMemberIds.length > 0) {
+            // Get removed user details to show name
+            const removedUser = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+
+            await prisma.notification.createMany({
+                data: remainingMemberIds.map(memberId => ({
+                    userId: memberId,
+                    type: 'member_removed',
+                    title: '🚪 Member removed',
+                    body: `${removedUser?.name || 'A member'} was removed from "${group.name}"`,
+                    link: `/groups/${groupId}`,
+                })),
+            });
+        }
+
         return NextResponse.json({ success: true, message: 'Member removed' });
     } catch (error) {
         console.error('Remove member error:', error);

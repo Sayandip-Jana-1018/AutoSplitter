@@ -425,8 +425,7 @@ export default function SplitByItems({
                                                                 </div>
 
                                                                 <div style={{
-                                                                    display: 'grid',
-                                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))',
+                                                                    display: 'flex', flexWrap: 'wrap', justifyContent: 'center',
                                                                     gap: 12,
                                                                 }}>
                                                                     {members.map(m => {
@@ -438,14 +437,14 @@ export default function SplitByItems({
                                                                                 style={{
                                                                                     background: 'none', border: 'none',
                                                                                     display: 'flex', flexDirection: 'column',
-                                                                                    alignItems: 'center', gap: 8, cursor: 'pointer',
+                                                                                    alignItems: 'center', gap: 6, cursor: 'pointer',
                                                                                     opacity: selected ? 1 : 0.5,
                                                                                     transform: selected ? 'scale(1)' : 'scale(0.95)',
-                                                                                    transition: 'all 0.2s'
+                                                                                    transition: 'all 0.2s', width: 60
                                                                                 }}
                                                                             >
                                                                                 <div style={{ position: 'relative' }}>
-                                                                                    <Avatar name={m.name} image={m.image} size="lg" ring={selected} />
+                                                                                    <Avatar name={m.name} image={m.image} size="md" ring={selected} />
                                                                                     {selected && (
                                                                                         <motion.div
                                                                                             initial={{ scale: 0 }} animate={{ scale: 1 }}

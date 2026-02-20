@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { supabase } from '@/lib/supabase';
 
-// POST /api/me/avatar — upload profile image
+// POST /api/me/avatar — upload profile image to Supabase Storage
 export async function POST(req: Request) {
     try {
         const session = await auth();
@@ -30,20 +29,28 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'File too large. Max 2MB.' }, { status: 400 });
         }
 
-        // Create upload directory
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-        await mkdir(uploadDir, { recursive: true });
-
         // Generate unique filename
         const ext = file.name.split('.').pop() || 'jpg';
-        const filename = `${session.user.email.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.${ext}`;
-        const filepath = path.join(uploadDir, filename);
+        const sanitized = session.user.email.replace(/[^a-z0-9]/gi, '_');
+        const filename = `avatars/${sanitized}_${Date.now()}.${ext}`;
 
-        // Write file
+        // Upload to Supabase Storage (receipts bucket — we reuse it for avatars too)
         const buffer = Buffer.from(await file.arrayBuffer());
-        await writeFile(filepath, buffer);
+        const { error: uploadError } = await supabase.storage
+            .from('receipts')
+            .upload(filename, buffer, {
+                contentType: file.type,
+                upsert: true,
+            });
 
-        const imageUrl = `/uploads/avatars/${filename}`;
+        if (uploadError) {
+            console.error('Supabase upload error:', uploadError);
+            return NextResponse.json({ error: 'Failed to upload avatar' }, { status: 500 });
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(filename);
+        const imageUrl = urlData.publicUrl;
 
         // Update user record
         await prisma.user.update({

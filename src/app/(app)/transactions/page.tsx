@@ -30,6 +30,8 @@ interface TransactionData {
     createdAt: string;
     payer: { id: string; name: string | null };
     splits: { userId: string; amount: number; user: { id: string; name: string | null } }[];
+    splitType?: string;
+    trip?: { group: { members: { userId: string; user: { id: string; name: string | null; image: string | null } }[] } };
 }
 
 type SortKey = 'time' | 'amount';
@@ -46,6 +48,7 @@ export default function TransactionsPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState('');
     const [editAmount, setEditAmount] = useState('');
+    const [editSplitAmong, setEditSplitAmong] = useState<Set<string>>(new Set());
     const [savingEdit, setSavingEdit] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -54,6 +57,7 @@ export default function TransactionsPage() {
         setEditingId(txn.id);
         setEditTitle(txn.title);
         setEditAmount(String(txn.amount / 100));
+        setEditSplitAmong(new Set(txn.splits.map(s => s.userId)));
     };
 
     const saveEdit = async (txnId: string) => {
@@ -66,6 +70,7 @@ export default function TransactionsPage() {
                 body: JSON.stringify({
                     title: editTitle.trim(),
                     amount: Math.round(parseFloat(editAmount) * 100),
+                    splitAmong: Array.from(editSplitAmong),
                 }),
             });
             if (res.ok) {
@@ -343,6 +348,38 @@ export default function TransactionsPage() {
                                                 <input value={editAmount} onChange={(e) => setEditAmount(e.target.value)} type="number" step="0.01"
                                                     style={{ background: 'var(--surface-input)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '10px 14px', color: 'var(--fg-primary)', fontSize: 'var(--text-sm)', outline: 'none', width: '100%' }}
                                                     placeholder="Amount (₹)" />
+
+                                                {/* Member Split Toggles */}
+                                                {(!txn.splitType || txn.splitType === 'equal') && txn.trip?.group.members && (
+                                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, marginBottom: 8 }}>
+                                                        <div style={{ width: '100%', fontSize: '11px', color: 'var(--fg-tertiary)' }}>Split between:</div>
+                                                        {txn.trip.group.members.map(m => {
+                                                            const isSelected = editSplitAmong.has(m.userId);
+                                                            return (
+                                                                <button
+                                                                    key={m.userId}
+                                                                    onClick={() => {
+                                                                        const next = new Set(editSplitAmong);
+                                                                        if (next.has(m.userId)) next.delete(m.userId);
+                                                                        else next.add(m.userId);
+                                                                        setEditSplitAmong(next);
+                                                                    }}
+                                                                    style={{
+                                                                        padding: '6px 12px', borderRadius: 16,
+                                                                        border: `1px solid ${isSelected ? 'var(--accent-500)' : 'var(--border-default)'}`,
+                                                                        background: isSelected ? 'var(--accent-500)' : 'var(--bg-primary)',
+                                                                        color: isSelected ? 'white' : 'var(--fg-secondary)',
+                                                                        fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                                                                        transition: 'all 0.2s',
+                                                                    }}
+                                                                >
+                                                                    {m.user.name?.split(' ')[0] || 'Unknown'}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+
                                                 <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
                                                     <button onClick={() => setEditingId(null)} style={{ padding: '7px 14px', borderRadius: 'var(--radius-full)', background: 'var(--bg-glass)', border: '1px solid var(--border-glass)', color: 'var(--fg-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '12px', fontWeight: 600 }}>
                                                         <X size={13} /> Cancel

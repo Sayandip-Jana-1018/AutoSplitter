@@ -9,6 +9,7 @@ const UpdateTransactionSchema = z.object({
     category: z.string().optional(),
     method: z.string().optional(),
     description: z.string().optional(),
+    splitAmong: z.array(z.string()).optional(),
 });
 
 // GET /api/transactions/[id] — get transaction detail
@@ -94,6 +95,7 @@ export async function PUT(
             },
             include: {
                 trip: { include: { group: { include: { members: true } } } },
+                splits: true,
             },
         });
 
@@ -116,21 +118,25 @@ export async function PUT(
                 data: updateData,
             });
 
-            // If amount changed, recalculate splits for equal split
-            if (parsed.data.amount && existing.splitType === 'equal') {
-                const memberIds = existing.trip.group.members.map(m => m.userId);
-                const perPerson = Math.floor(parsed.data.amount / memberIds.length);
-                const remainder = parsed.data.amount - perPerson * memberIds.length;
+            // If amount or splitAmong changed, recalculate splits for equal split
+            if ((parsed.data.amount || parsed.data.splitAmong) && existing.splitType === 'equal') {
+                const memberIds = parsed.data.splitAmong || existing.splits.map((s: { userId: string }) => s.userId);
+                const totalAmount = parsed.data.amount || existing.amount;
 
-                // Delete old splits and create new
-                await tx.splitItem.deleteMany({ where: { transactionId: id } });
-                await tx.splitItem.createMany({
-                    data: memberIds.map((userId, i) => ({
-                        transactionId: id,
-                        userId,
-                        amount: perPerson + (i === 0 ? remainder : 0),
-                    })),
-                });
+                if (memberIds.length > 0) {
+                    const perPerson = Math.floor(totalAmount / memberIds.length);
+                    const remainder = totalAmount - perPerson * memberIds.length;
+
+                    // Delete old splits and create new
+                    await tx.splitItem.deleteMany({ where: { transactionId: id } });
+                    await tx.splitItem.createMany({
+                        data: memberIds.map((userId: string, i: number) => ({
+                            transactionId: id,
+                            userId,
+                            amount: perPerson + (i === 0 ? remainder : 0),
+                        })),
+                    });
+                }
             }
 
             return txn;

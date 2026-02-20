@@ -136,6 +136,9 @@ function QuickAddContent() {
                     // Only default select all if NOT using custom split from URL
                     if (splitType !== 'custom') {
                         setSelectedMembers(new Set(memberList.map((m: { id: string }) => m.id)));
+                    } else if (customSplits.length > 0) {
+                        // If it IS custom, make sure only the people in customSplits are selected
+                        setSelectedMembers(new Set(customSplits.map(s => s.userId)));
                     }
 
                     // Default payer to current user
@@ -150,7 +153,7 @@ function QuickAddContent() {
             }
         }
         loadGroupDetail();
-    }, [selectedGroupId, currentUser, splitType]); // Added splitType to deps to prevent overwriting custom split
+    }, [selectedGroupId, currentUser, splitType, customSplits]);
 
     const numericAmount = parseFloat(amount) || 0;
     const selectedCount = selectedMembers.size;

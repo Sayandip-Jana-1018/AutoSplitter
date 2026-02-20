@@ -64,8 +64,8 @@ export async function POST(
             data: {
                 userId: settlement.toId,
                 type: 'settlement_completed',
-                title: 'Payment Received',
-                body: `${settlement.from.name || 'Someone'} paid you ₹${(settlement.amount / 100).toFixed(0)} via UPI${utrNumber ? ` (UTR: ${utrNumber})` : ''}.`,
+                title: '✅ Payment Received',
+                body: `${settlement.from.name || 'Someone'} paid you ₹${(settlement.amount / 100).toLocaleString('en-IN')} via UPI${utrNumber ? ` (UTR: ${utrNumber})` : ''}`,
                 link: `/settlements`,
             },
         });

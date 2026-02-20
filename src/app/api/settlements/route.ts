@@ -229,8 +229,8 @@ export async function POST(req: Request) {
                 data: {
                     userId: parsed.data.toUserId,
                     type: 'settlement_completed',
-                    title: 'Payment Settled',
-                    body: `${user.name || 'Someone'} marked ₹${(parsed.data.amount / 100).toFixed(0)} as paid to you via ${parsed.data.method}.`,
+                    title: '✅ Payment Received',
+                    body: `${user.name || 'Someone'} paid you ₹${(parsed.data.amount / 100).toLocaleString('en-IN')} via ${parsed.data.method}`,
                     link: '/settlements',
                 },
             });

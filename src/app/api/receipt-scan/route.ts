@@ -24,7 +24,7 @@ interface ReceiptScanResult {
     confidence: number;
 }
 
-const SYSTEM_PROMPT = `You are an expert receipt parser. Given a receipt image, extract ALL structured data.
+const SYSTEM_PROMPT = `You are an expert receipt parser with perfect vision. Given a receipt image, extract ALL structured data with 99% accuracy.
 Return ONLY valid JSON with this exact schema (no markdown, no explanation, no code fences):
 {
   "merchant": "Store/Restaurant Name" or null,
@@ -39,13 +39,18 @@ Return ONLY valid JSON with this exact schema (no markdown, no explanation, no c
   "confidence": 0.95
 }
 
-Rules:
-- All prices in the ORIGINAL CURRENCY as decimal (e.g. 120.50 for ₹120.50)
-- If quantity is not listed, default to 1
-- If tax breakdown isn't clear, use "Tax" as key
-- Omit header/footer text, table numbers, etc.
-- If you cannot read the receipt clearly, set confidence below 0.3
-- Always return valid JSON, never null`;
+CRITICAL RULES for 99% ACCURACY:
+1. Prices MUST be in the ORIGINAL CURRENCY as exact decimals (e.g., 120.50 for ₹120.50). Do NOT convert currencies.
+2. The "total" MUST EXACTLY MATCH the final charged amount on the receipt. Double-check this digit by digit!
+3. Include EVERY SINGLE ITEM listed. Do not skip or summarize items.
+4. "price" inside "items" must be the TOTAL price for that item row (quantity * unit price) if not explicitly split.
+5. If quantity is missing, default to 1.
+6. Extract all taxes (CGST, SGST, Service Charge, VAT, etc.) into the "taxes" object. If tax type is unclear, use "Tax".
+7. Exclude the "Total" row from the "items" array. Only actual products/services go in "items".
+8. Ignore headers, footers, phone numbers, table numbers, and wifi passwords.
+9. Verify the math: subtotal + taxes + tips/fees SHOULD equal the total. If it doesn't, trust the printed "Total" at the bottom of the receipt.
+10. If the image is blurry/unreadable and you cannot find a total, set confidence below 0.3.
+Always return raw JSON.`;
 
 export async function POST(req: Request) {
     try {

@@ -54,6 +54,13 @@ export async function GET(req: Request) {
                     splits: {
                         include: { user: { select: { id: true, name: true } } },
                     },
+                    trip: {
+                        select: {
+                            group: {
+                                select: { members: { include: { user: { select: { id: true, name: true, image: true } } } } }
+                            }
+                        }
+                    }
                 },
                 orderBy: { createdAt: 'desc' },
                 take: limit,
@@ -86,6 +93,13 @@ export async function GET(req: Request) {
                 splits: {
                     include: { user: { select: { id: true, name: true } } },
                 },
+                trip: {
+                    select: {
+                        group: {
+                            select: { members: { include: { user: { select: { id: true, name: true, image: true } } } } }
+                        }
+                    }
+                }
             },
             orderBy: { createdAt: 'desc' },
             take: limit,
@@ -199,8 +213,8 @@ export async function POST(req: Request) {
                     data: otherMemberIds.map((memberId: string) => ({
                         userId: memberId,
                         type: 'new_expense',
-                        title: `${payerName} added an expense`,
-                        body: `${amountFormatted} for ${categoryLabel} — "${title}" in ${trip.group.name}`,
+                        title: `💰 ${payerName} added an expense`,
+                        body: `${amountFormatted} for ${categoryLabel} — ${title} in ${trip.group.name}`,
                         link: `/groups/${trip.group.id}`,
                     })),
                 });
