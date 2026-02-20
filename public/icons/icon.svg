@@ -28,6 +28,12 @@
             <stop offset="70%" stop-color="#ea580c" />
             <stop offset="100%" stop-color="#9a3412" />
         </linearGradient>
+
+        <!-- Dynamic Core Perspective Filter (Center pointing towards user) -->
+        <filter id="coreGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="0" stdDeviation="20" flood-color="#fef08a" flood-opacity="1"/>
+            <feDropShadow dx="0" dy="0" stdDeviation="40" flood-color="#ea580c" flood-opacity="0.8"/>
+        </filter>
     </defs>
     
     <!-- Base App Icon -->
@@ -77,15 +83,16 @@
         <circle cx="280" cy="460" r="6" fill="#fef3c7" opacity="0.8" />
     </g>
 
-    <!-- The Stylish Fiery X -->
+    <!-- The Stylish Fiery X (Less curved, centered depth) -->
     <g filter="drop-shadow(0px 12px 30px rgba(220, 38, 38, 0.8))">
-        <!-- Back slash (curved swoosh) -->
-        <path d="M 120 160 A 250 250 0 0 1 352 392 L 392 352 A 250 250 0 0 0 160 120 Z" fill="url(#fireDark)" />
+        <!-- Back slash (Slightly curved) -->
+        <path d="M 120 160 Q 256 120 392 352 L 352 392 Q 256 320 160 120 Z" fill="url(#fireDark)" />
         
-        <!-- Front slash (curved swoosh) -->
-        <path d="M 120 352 A 250 250 0 0 0 352 120 L 392 160 A 250 250 0 0 1 160 392 Z" fill="url(#fire)" />
+        <!-- Front slash (Slightly curved) -->
+        <path d="M 120 352 Q 160 256 392 160 L 352 120 Q 280 256 160 392 Z" fill="url(#fire)" />
         
-        <!-- Central intensely hot glowing diamond core -->
-        <polygon points="256,220 292,256 256,292 220,256" fill="#fef08a" filter="drop-shadow(0px 0px 25px rgba(254,240,138,1))" />
+        <!-- Central intensely hot glowing core (Larger, bursting effect to point at user) -->
+        <polygon points="256,212 300,256 256,300 212,256" fill="#ffffff" filter="url(#coreGlow)" />
+        <polygon points="256,230 282,256 256,282 230,256" fill="#fcd34d" />
     </g>
 </svg>
