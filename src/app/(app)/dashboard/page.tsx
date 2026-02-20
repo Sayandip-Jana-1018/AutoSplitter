@@ -30,7 +30,13 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { formatCurrency, timeAgo } from '@/lib/utils';
 import useSWR from 'swr';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => fetch(url).then((res) => {
+    if (res.status === 401) {
+        if (typeof window !== 'undefined') window.location.href = '/login';
+        return null;
+    }
+    return res.json();
+});
 
 /* ── Animation helpers ── */
 const fadeUp = {
