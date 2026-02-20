@@ -57,8 +57,6 @@ function QuickAddContent() {
         const paramTitle = searchParams.get('title');
         const paramMethod = searchParams.get('method');
         const paramSplitData = searchParams.get('splitData');
-        const paramReceiptUrl = searchParams.get('receiptUrl');
-
         if (paramAmount) setAmount(paramAmount);
         if (paramTitle) setTitle(paramTitle);
         if (paramMethod) setMethod(paramMethod);

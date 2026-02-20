@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
@@ -45,12 +45,6 @@ const staggerContainer = {
 };
 
 /* ── Types ── */
-interface DashboardStats {
-    totalSpent: number;
-    youOwe: number;
-    youAreOwed: number;
-    activeTrips: number;
-}
 
 interface Transaction {
     id: string;
@@ -120,11 +114,7 @@ const glassCardInner: React.CSSProperties = {
 
 export default function DashboardPage() {
     const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState<DashboardStats>({ totalSpent: 0, youOwe: 0, youAreOwed: 0, activeTrips: 0 });
-    const [recentTxns, setRecentTxns] = useState<Transaction[]>([]);
-    const [settlements, setSettlements] = useState<Settlement[]>([]);
-    const [members, setMembers] = useState<GroupMember[]>([]);
+
     const [isRefreshing, setIsRefreshing] = useState(false);
     const { toast } = useToast();
     const haptics = useHaptics();
@@ -132,7 +122,7 @@ export default function DashboardPage() {
     const { user: currentUser } = useCurrentUser();
     const currentUserId = currentUser?.id || '';
 
-    const ptr = usePullToRefresh({
+    const { containerRef: ptrContainerRef, pullDistance: ptrPullDistance, refreshing: ptrRefreshing } = usePullToRefresh({
         onRefresh: async () => {
             haptics.medium();
             await Promise.all([mutateGroups(), mutateTxns(), mutateSettlements()]);
@@ -140,7 +130,7 @@ export default function DashboardPage() {
     });
 
     // Scroll Parallax Logic
-    const { scrollY } = useScroll({ container: ptr.containerRef });
+    const { scrollY } = useScroll({ container: ptrContainerRef });
     const heroScale = useTransform(scrollY, [0, 200], [1, 0.95]);
     const heroOpacity = useTransform(scrollY, [0, 200], [1, 0.8]);
     const heroY = useTransform(scrollY, [0, 200], [0, 10]);
@@ -150,12 +140,13 @@ export default function DashboardPage() {
     const { data: txnsData, mutate: mutateTxns, isLoading: loadingTxns } = useSWR('/api/transactions?limit=5', fetcher);
     const { data: settData, mutate: mutateSettlements, isLoading: loadingSett } = useSWR('/api/settlements', fetcher);
 
-    useEffect(() => {
+    // Derive all dashboard data from SWR responses (no useEffect + setState)
+    const { stats, recentTxns, settlements, members } = useMemo(() => {
         const groups = groupsData?.groups || groupsData || [];
         const txns = txnsData?.transactions || txnsData || [];
         const pending = Array.isArray(settData?.computed) ? settData.computed : [];
 
-        let newActiveTrips = groups.length;
+        const newActiveTrips = groups.length;
         const allMembers: GroupMember[] = [];
         for (const group of groups) {
             if (group.members) {
@@ -168,41 +159,39 @@ export default function DashboardPage() {
                 }
             }
         }
-        setMembers(allMembers);
 
-        let newTotalSpent = 0;
-        const recentList: Transaction[] = txns.slice(0, 5).map((t: Record<string, unknown>) => {
-            newTotalSpent += (t.amount as number) || 0;
-            return {
-                id: (t.id as string) || String(Math.random()),
-                title: (t.description as string) || (t.title as string) || 'Expense',
-                amount: (t.amount as number) || 0,
-                payer: (t.paidBy as { name?: string })?.name || (t.payer as { name?: string })?.name || (typeof t.paidBy === 'string' ? (t.paidBy as string) : null) || (typeof t.payer === 'string' ? (t.payer as string) : null) || 'Unknown',
-                category: (t.category as string) || 'general',
-                method: (t.paymentMethod as string) || 'cash',
-                time: (t.createdAt as string) || new Date().toISOString(),
-            };
-        });
-        setRecentTxns(recentList);
+        const recentList: Transaction[] = txns.slice(0, 5).map((t: Record<string, unknown>, idx: number) => ({
+            id: (t.id as string) || `txn-${idx}`,
+            title: (t.description as string) || (t.title as string) || 'Expense',
+            amount: (t.amount as number) || 0,
+            payer: (t.paidBy as { name?: string })?.name || (t.payer as { name?: string })?.name || (typeof t.paidBy === 'string' ? (t.paidBy as string) : null) || (typeof t.payer === 'string' ? (t.payer as string) : null) || 'Unknown',
+            category: (t.category as string) || 'general',
+            method: (t.paymentMethod as string) || 'cash',
+            time: (t.createdAt as string) || new Date().toISOString(),
+        }));
 
-        let newYouOwe = 0;
-        let newYouAreOwed = 0;
-        const settList: Settlement[] = pending.map((s: Record<string, unknown>) => {
-            const fromId = (s.from as string) || '';
-            const toId = (s.to as string) || '';
-            const amount = (s.amount as number) || 0;
-            if (currentUserId && fromId === currentUserId) newYouOwe += amount;
-            if (currentUserId && toId === currentUserId) newYouAreOwed += amount;
-            return { from: fromId, to: toId, amount };
-        });
-        setSettlements(settList);
+        const newTotalSpent = recentList.reduce((sum, t) => sum + t.amount, 0);
 
-        setStats({
-            activeTrips: newActiveTrips,
-            totalSpent: newTotalSpent,
-            youOwe: newYouOwe,
-            youAreOwed: newYouAreOwed,
-        });
+        const settList: Settlement[] = pending.map((s: Record<string, unknown>) => ({
+            from: (s.from as string) || '',
+            to: (s.to as string) || '',
+            amount: (s.amount as number) || 0,
+        }));
+
+        const newYouOwe = settList.reduce((sum, s) => currentUserId && s.from === currentUserId ? sum + s.amount : sum, 0);
+        const newYouAreOwed = settList.reduce((sum, s) => currentUserId && s.to === currentUserId ? sum + s.amount : sum, 0);
+
+        return {
+            stats: {
+                activeTrips: newActiveTrips,
+                totalSpent: newTotalSpent,
+                youOwe: newYouOwe,
+                youAreOwed: newYouAreOwed,
+            },
+            recentTxns: recentList,
+            settlements: settList,
+            members: allMembers,
+        };
     }, [groupsData, txnsData, settData, currentUserId]);
 
     const handleRefresh = async () => {
@@ -216,9 +205,9 @@ export default function DashboardPage() {
     const isLoadingPage = loadingGroups || loadingTxns || loadingSett;
 
     return (
-        <div ref={ptr.containerRef} style={{ overflow: 'auto', position: 'relative', height: '100%' }}>
+        <div ref={ptrContainerRef} style={{ overflow: 'auto', position: 'relative', height: '100%' }}>
             <ParticleBackground count={30} className="fixed inset-0 pointer-events-none" />
-            <PullToRefreshIndicator pullDistance={ptr.pullDistance} refreshing={ptr.refreshing} />
+            <PullToRefreshIndicator pullDistance={ptrPullDistance} refreshing={ptrRefreshing} />
 
             {isLoadingPage && (!groupsData || !txnsData || !settData) ? (
                 <div style={{ padding: 'var(--space-5)' }}>

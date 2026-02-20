@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Github, Twitter, Instagram, Linkedin, Heart } from 'lucide-react';
+import { Github, Twitter, Instagram, Linkedin } from 'lucide-react';
 import styles from '@/app/landing.module.css';
 
 const socials = [
-    { icon: Github, href: 'https://github.com', label: 'GitHub' },
-    { icon: Twitter, href: 'https://twitter.com', label: 'Twitter' },
-    { icon: Instagram, href: 'https://instagram.com', label: 'Instagram' },
-    { icon: Linkedin, href: 'https://linkedin.com', label: 'LinkedIn' },
+    { icon: Github, href: 'https://github.com/Sayandip-Jana-1018', label: 'GitHub' },
+    { icon: Twitter, href: 'https://x.com/51Sayandip', label: 'Twitter' },
+    { icon: Instagram, href: 'https://www.instagram.com/sj_sayandip/', label: 'Instagram' },
+    { icon: Linkedin, href: 'https://www.linkedin.com/in/jsayandip2003/', label: 'LinkedIn' },
 ];
 
 export default function Footer() {

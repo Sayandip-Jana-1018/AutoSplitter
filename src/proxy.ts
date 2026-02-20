@@ -52,7 +52,7 @@ export async function proxy(request: NextRequest) {
 
     // ── Global Upstash Rate Limiting ──
     const id = ip;
-    const { success, pending, limit, reset, remaining } = await ratelimit.limit(id);
+    const { success, limit, reset, remaining } = await ratelimit.limit(id);
 
     // Provide some minimal headers
     const response = success ? NextResponse.next() : NextResponse.json(

@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { motion, useInView, Variants } from 'framer-motion';
-import { Cpu, Check, Sparkles } from 'lucide-react';
+import { Cpu, Sparkles } from 'lucide-react';
 import styles from '@/app/landing.module.css';
 
 const fadeInUp: Variants = {

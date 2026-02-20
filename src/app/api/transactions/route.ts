@@ -134,7 +134,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Trip not found or access denied' }, { status: 404 });
         }
 
-        const { title, amount, category, method, description, receiptUrl, splitType, splitAmong, splits } = parsed.data;
+        const { title, amount, category, method, description, splitType, splitAmong, splits } = parsed.data;
 
         // Calculate splits
         let splitData: { userId: string; amount: number }[] = [];

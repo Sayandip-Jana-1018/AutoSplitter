@@ -266,7 +266,7 @@ export default function ScanReceiptPage() {
 
     const handleSaveToExpense = async () => {
         setSaving(true);
-        let receiptUrl = await uploadAndGetReceiptUrl();
+        const receiptUrl = await uploadAndGetReceiptUrl();
         const params = new URLSearchParams();
         if (receiptUrl) params.set('receiptUrl', receiptUrl);
 
@@ -1253,7 +1253,7 @@ export default function ScanReceiptPage() {
                         setShowSplitByItems(false);
                         setSaving(true);
 
-                        let receiptUrl = await uploadAndGetReceiptUrl();
+                        const receiptUrl = await uploadAndGetReceiptUrl();
 
                         // Navigate to add expense with pre-filled split data
                         const params = new URLSearchParams({
