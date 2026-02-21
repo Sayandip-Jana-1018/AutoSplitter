@@ -266,8 +266,8 @@ export async function POST(req: Request) {
         if (!isUpi) {
             await prisma.notification.create({
                 data: {
-                    userId: parsed.data.toUserId,
-                    actorId: user.id,
+                    user: { connect: { id: parsed.data.toUserId } },
+                    actor: { connect: { id: user.id } },
                     type: 'settlement_completed',
                     title: '✅ Payment Received',
                     body: `${user.name || 'Someone'} paid you ₹${(parsed.data.amount / 100).toLocaleString('en-IN')} via ${parsed.data.method}`,

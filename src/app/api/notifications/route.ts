@@ -104,7 +104,7 @@ export async function POST(req: Request) {
         }
 
         const notification = await prisma.notification.create({
-            data: { userId, type, title, body: notifBody, link },
+            data: { user: { connect: { id: userId } }, type, title, body: notifBody, link },
         });
 
         return NextResponse.json(notification, { status: 201 });

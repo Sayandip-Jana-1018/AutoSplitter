@@ -159,7 +159,7 @@ export async function POST(
         if (type === 'payment_reminder' && targetUserId) {
             await prisma.notification.create({
                 data: {
-                    userId: targetUserId,
+                    user: { connect: { id: targetUserId } },
                     type: 'payment_reminder',
                     title: 'Payment Reminder',
                     body: `${user.name || 'Someone'} sent you a payment reminder in ${group.name}.`,

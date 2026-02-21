@@ -118,8 +118,8 @@ export async function DELETE(
         try {
             await prisma.notification.create({
                 data: {
-                    userId,
-                    actorId: currentUser.id,
+                    user: { connect: { id: userId } },
+                    actor: { connect: { id: currentUser.id } },
                     type: 'member_removed',
                     title: '🚪 Removed from group',
                     body: `You were removed from "${group.name}" by ${currentUser.name || 'an admin'}. Splits have been recalculated.`,

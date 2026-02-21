@@ -62,8 +62,8 @@ export async function POST(
         // ── Notify the receiver ──
         await prisma.notification.create({
             data: {
-                userId: settlement.toId,
-                actorId: user.id,
+                user: { connect: { id: settlement.toId } },
+                actor: { connect: { id: user.id } },
                 type: 'settlement_completed',
                 title: '✅ Payment Received',
                 body: `${settlement.from.name || 'Someone'} paid you ₹${(settlement.amount / 100).toLocaleString('en-IN')} via UPI${utrNumber ? ` (UTR: ${utrNumber})` : ''}`,
