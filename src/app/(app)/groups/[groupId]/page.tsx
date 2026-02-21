@@ -277,15 +277,18 @@ export default function GroupDetailPage() {
                     >
                         <ArrowLeft size={18} />
                     </button>
-                    <Button size="sm" variant="ghost" iconOnly onClick={() => setShowInvite(true)}>
-                        <Share2 size={18} />
-                    </Button>
-                    {group.currentUserId === group.ownerId && (
-                        <Button size="sm" variant="ghost" iconOnly onClick={() => setShowDeleteConfirm(true)}
-                            style={{ color: 'var(--color-error, #ef4444)' }}>
-                            <Trash2 size={18} />
+                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                        <Button size="sm" variant="ghost" iconOnly onClick={() => setShowInvite(true)}
+                            style={{ color: 'var(--fg-secondary)' }}>
+                            <Share2 size={18} />
                         </Button>
-                    )}
+                        {group.currentUserId === group.ownerId && (
+                            <Button size="sm" variant="ghost" iconOnly onClick={() => setShowDeleteConfirm(true)}
+                                style={{ color: 'var(--color-error, #ef4444)' }}>
+                                <Trash2 size={18} />
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {/* ── Delete Group Confirmation Modal ── */}
