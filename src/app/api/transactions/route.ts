@@ -25,6 +25,7 @@ const CreateTransactionSchema = z.object({
     method: z.string().default('cash'),
     description: z.string().optional(),
     receiptUrl: z.string().url().optional(),
+    payerId: z.string().optional(), // who paid — defaults to logged-in user
     splitType: z.enum(['equal', 'percentage', 'custom']).default('equal'),
     splitAmong: z.array(z.string()).optional(), // subset of member IDs to split among
     splits: z.array(z.object({
@@ -148,14 +149,19 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Trip not found or access denied' }, { status: 404 });
         }
 
-        const { title, amount, category, method, description, splitType, splitAmong, splits } = parsed.data;
+        const { title, amount, category, method, description, splitType, splitAmong, splits, payerId: requestedPayerId } = parsed.data;
+
+        // Determine actual payer — use request payerId if valid, otherwise logged-in user
+        const allMemberIds: string[] = trip.group.members.map((m: { userId: string }) => m.userId);
+        const actualPayerId = (requestedPayerId && allMemberIds.includes(requestedPayerId))
+            ? requestedPayerId
+            : user.id;
 
         // Calculate splits
         let splitData: { userId: string; amount: number }[] = [];
 
         if (splitType === 'equal') {
             // Use splitAmong if provided, otherwise all group members
-            const allMemberIds: string[] = trip.group.members.map((m: { userId: string }) => m.userId);
             const targetIds = splitAmong && splitAmong.length > 0
                 ? allMemberIds.filter(id => splitAmong.includes(id))
                 : allMemberIds;
@@ -178,7 +184,7 @@ export async function POST(req: Request) {
         const transaction = await prisma.transaction.create({
             data: {
                 tripId: parsed.data.tripId,
-                payerId: user.id,
+                payerId: actualPayerId,
                 title,
                 amount,
                 category,
@@ -212,9 +218,10 @@ export async function POST(req: Request) {
                 await prisma.notification.createMany({
                     data: otherMemberIds.map((memberId: string) => ({
                         userId: memberId,
+                        actorId: user.id,
                         type: 'new_expense',
                         title: `💰 ${payerName} added an expense`,
-                        body: `${amountFormatted} for ${categoryLabel} — ${title} in ${trip.group.name}`,
+                        body: `${payerName} added ${amountFormatted} for category: ${categoryLabel}`,
                         link: `/groups/${trip.group.id}`,
                     })),
                 });

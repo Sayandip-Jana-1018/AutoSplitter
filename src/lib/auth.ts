@@ -158,8 +158,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     return true;
                 } catch (error) {
                     console.error('OAuth DB sync error:', error);
-                    // Still allow sign-in even if DB sync fails
-                    return true;
+                    // Block sign-in if DB sync fails — prevents broken sessions
+                    return false;
                 }
             }
 

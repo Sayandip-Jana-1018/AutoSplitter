@@ -131,11 +131,14 @@ export default function GroupDetailPage() {
             ]);
             if (groupRes.ok) {
                 const data = await groupRes.json();
+                // Use balances from the dedicated balances API if available
+                // (it accounts for settlements; the detail API doesn't)
+                if (balancesRes.ok) {
+                    const bData = await balancesRes.json();
+                    data.balances = bData.balances || data.balances;
+                    setSuggestedSettlements(bData.settlements || []);
+                }
                 setGroup(data);
-            }
-            if (balancesRes.ok) {
-                const bData = await balancesRes.json();
-                setSuggestedSettlements(bData.settlements || []);
             }
         } catch (err) {
             console.error('Failed to fetch group:', err);

@@ -15,6 +15,8 @@ interface SettlementGraphProps {
     members: string[];
     settlements: Settlement[];
     memberImages?: Record<string, string | null>;
+    compact?: boolean;
+    instanceId?: string;
 }
 
 function getNodePositions(count: number, cx: number, cy: number, radius: number) {
@@ -27,26 +29,28 @@ function getNodePositions(count: number, cx: number, cy: number, radius: number)
     });
 }
 
-export default function SettlementGraph({ members, settlements, memberImages = {} }: SettlementGraphProps) {
+export default function SettlementGraph({ members, settlements, memberImages = {}, compact = false, instanceId = 'default' }: SettlementGraphProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [size, setSize] = useState({ w: 320, h: 320 });
+    const [size, setSize] = useState({ w: 320, h: compact ? 240 : 320 });
 
     useEffect(() => {
         function updateSize() {
             if (containerRef.current) {
                 const w = containerRef.current.offsetWidth;
-                setSize({ w, h: Math.min(w, 400) });
+                setSize({ w, h: compact ? Math.min(w, 260) : Math.min(w, 400) });
             }
         }
         updateSize();
         window.addEventListener('resize', updateSize);
         return () => window.removeEventListener('resize', updateSize);
-    }, []);
+    }, [compact]);
 
     const cx = size.w / 2;
     const cy = size.h / 2;
-    const radius = Math.min(cx, cy) - 50;
+    const nodeOffset = compact ? 38 : 50;
+    const radius = Math.min(cx, cy) - nodeOffset;
     const positions = getNodePositions(members.length, cx, cy, radius);
+    const markerId = `arrowHead-${instanceId}`;
 
     return (
         <div ref={containerRef} style={{ width: '100%' }}>
@@ -58,7 +62,7 @@ export default function SettlementGraph({ members, settlements, memberImages = {
             >
                 <defs>
                     <marker
-                        id="arrowHead"
+                        id={markerId}
                         markerWidth="8"
                         markerHeight="6"
                         refX="8"
@@ -107,7 +111,7 @@ export default function SettlementGraph({ members, settlements, memberImages = {
                                 strokeWidth={2}
                                 strokeDasharray="6 3"
                                 opacity={0.4}
-                                markerEnd="url(#arrowHead)"
+                                markerEnd={`url(#${markerId})`}
                                 initial={{ pathLength: 0 }}
                                 animate={{ pathLength: 1 }}
                                 transition={{ delay: 0.4 + i * 0.15, duration: 0.6 }}

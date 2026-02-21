@@ -112,6 +112,14 @@ export const CATEGORIES: Record<string, { label: string; emoji: string }> = {
     other: { label: 'Other', emoji: '📎' },
 };
 
+/** Get Category Data (supports custom categories) */
+export function getCategoryData(category: string): { label: string; emoji: string } {
+    if (!category) return CATEGORIES.general;
+    if (CATEGORIES[category]) return CATEGORIES[category];
+    // Custom category
+    return { label: category, emoji: '📌' };
+}
+
 /** Payment method labels and icons */
 export const PAYMENT_METHODS: Record<string, { label: string; emoji: string }> = {
     cash: { label: 'Cash', emoji: '💵' },

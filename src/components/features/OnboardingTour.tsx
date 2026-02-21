@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
 
 interface TourStep {
-    target: string;        // CSS selector for the element to highlight
+    target?: string;        // CSS selector for the element to highlight (optional for centered cards)
     title: string;
     description: string;
     position?: 'top' | 'bottom' | 'left' | 'right';
@@ -55,16 +55,20 @@ const TOUR_STEPS: TourStep[] = [
         position: 'top',
     },
     {
-        target: '[data-tour="/settlements"]',
+        target: '[aria-label="Notifications"]',
         title: '🔔 Smart Notifications',
-        description: 'A notification banner shows pending settlements. One tap takes you to the settle-up page.',
+        description: 'A notification panel shows pending settlements and group invites. Tap the bell icon to view them.',
+        position: 'bottom',
+    },
+    {
+        target: '[data-tour="/settlements"]',
+        title: '🤝 Settle Up',
+        description: 'A dedicated page to review and settle all your group balances with a single tap.',
         position: 'top',
     },
     {
-        target: '[data-tour="/dashboard"]',
         title: '🔄 Pull to Refresh',
         description: 'Swipe down on the dashboard to refresh all your data with a smooth animation. Works on mobile!',
-        position: 'top',
     },
 ];
 
@@ -83,7 +87,7 @@ export default function OnboardingTour() {
             if (!seen) {
                 // Delay to allow page to render, then find first visible step
                 timerRef.current = window.setTimeout(() => {
-                    const firstVisible = TOUR_STEPS.findIndex(s => document.querySelector(s.target));
+                    const firstVisible = TOUR_STEPS.findIndex(s => !s.target || document.querySelector(s.target));
                     if (firstVisible >= 0) {
                         setStep(firstVisible);
                         setActive(true);
@@ -96,25 +100,43 @@ export default function OnboardingTour() {
         return () => clearTimeout(timerRef.current);
     }, []);
 
-    // Update spotlight position
+    // Track spotlight position continuously to follow smooth scrolling
     useEffect(() => {
         if (!active) return;
+
+        let frameId: number;
+        let lastTarget: string | undefined = undefined;
+
         const updateRect = () => {
             const currentStep = TOUR_STEPS[step];
             if (!currentStep) return;
-            const el = document.querySelector(currentStep.target);
-            if (el) {
-                const rect = el.getBoundingClientRect();
-                setSpotlightRect(rect);
-            } else {
+
+            if (!currentStep.target) {
                 setSpotlightRect(null);
+            } else {
+                const el = document.querySelector(currentStep.target);
+                if (el) {
+                    // If this is a new step, trigger the scroll once
+                    if (lastTarget !== currentStep.target) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                        lastTarget = currentStep.target;
+                    }
+
+                    const rect = el.getBoundingClientRect();
+                    setSpotlightRect(rect);
+                } else {
+                    setSpotlightRect(null);
+                }
             }
+
+            frameId = requestAnimationFrame(updateRect);
         };
 
-        // Defer read/write to next frame to avoid synchronous layout thrashing/setState
-        const frameId = requestAnimationFrame(updateRect);
+        frameId = requestAnimationFrame(updateRect);
 
-        return () => cancelAnimationFrame(frameId);
+        return () => {
+            if (frameId) cancelAnimationFrame(frameId);
+        };
     }, [active, step]);
 
     const dismiss = useCallback(() => {
@@ -128,8 +150,8 @@ export default function OnboardingTour() {
     const next = useCallback(() => {
         let nextStep = step + 1;
         while (nextStep < TOUR_STEPS.length) {
-            const el = document.querySelector(TOUR_STEPS[nextStep].target);
-            if (el) { setStep(nextStep); return; }
+            const stepData = TOUR_STEPS[nextStep];
+            if (!stepData.target || document.querySelector(stepData.target)) { setStep(nextStep); return; }
             nextStep++;
         }
         dismiss(); // No more visible steps
@@ -139,8 +161,8 @@ export default function OnboardingTour() {
     const prev = useCallback(() => {
         let prevStep = step - 1;
         while (prevStep >= 0) {
-            const el = document.querySelector(TOUR_STEPS[prevStep].target);
-            if (el) { setStep(prevStep); return; }
+            const stepData = TOUR_STEPS[prevStep];
+            if (!stepData.target || document.querySelector(stepData.target)) { setStep(prevStep); return; }
             prevStep--;
         }
     }, [step]);

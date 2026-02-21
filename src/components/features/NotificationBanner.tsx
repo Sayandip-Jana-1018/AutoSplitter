@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertCircle, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useHaptics } from '@/hooks/useHaptics';
+
+const fetcher = (url: string) => fetch(url).then(r => r.ok ? r.json() : null);
 
 interface PendingSettlement {
     fromId: string;
@@ -15,11 +18,8 @@ interface PendingSettlement {
 }
 
 export default function NotificationBanner() {
-    const [settlements, setSettlements] = useState<PendingSettlement[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [dismissed, setDismissed] = useState(false);
-    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [dataLoaded, setDataLoaded] = useState(false);
     const [mounted, setMounted] = useState(false);
     const haptics = useHaptics();
 
@@ -29,40 +29,33 @@ export default function NotificationBanner() {
         return () => clearTimeout(timer);
     }, []);
 
-    // Fetch current user
-    useEffect(() => {
-        let isMounted = true;
-        fetch('/api/me')
-            .then(r => r.ok ? r.json() : null)
-            .then(data => { if (isMounted && data?.id) setCurrentUserId(data.id); })
-            .catch(() => { });
-        return () => { isMounted = false; };
-    }, []);
+    const { data: userData } = useSWR('/api/me', fetcher);
+    const currentUserId = userData?.id || null;
 
-    // Fetch pending settlements
-    useEffect(() => {
-        if (!currentUserId) return;
-        let isMounted = true;
-        if (isMounted) setTimeout(() => setDataLoaded(false), 0);
-        fetch('/api/settlements')
-            .then(r => r.ok ? r.json() : { computed: [] })
-            .then(data => {
-                if (!isMounted) return;
-                const pending = (data.computed || [])
-                    .filter((s: Record<string, unknown>) => s.from === currentUserId || s.to === currentUserId)
-                    .map((s: Record<string, unknown>) => ({
-                        fromId: String(s.from || ''),
-                        fromName: String(s.fromName || 'Someone'),
-                        toId: String(s.to || ''),
-                        toName: String(s.toName || 'Someone'),
-                        amount: Number(s.amount || 0),
-                    }));
-                setSettlements(pending);
-                setDataLoaded(true);
-            })
-            .catch(() => { if (isMounted) setDataLoaded(true); });
-        return () => { isMounted = false; };
-    }, [currentUserId]);
+    const { data: settData, isLoading } = useSWR(currentUserId ? '/api/settlements' : null, fetcher);
+
+    // Derive settlements and loading state from SWR data (no setState in effect)
+    const { settlements, dataLoaded } = useMemo(() => {
+        if (isLoading || !currentUserId) {
+            return { settlements: [] as PendingSettlement[], dataLoaded: false };
+        }
+        if (settData) {
+            const pending: PendingSettlement[] = (settData.computed || [])
+                .filter((s: Record<string, unknown>) => s.from === currentUserId || s.to === currentUserId)
+                .map((s: Record<string, unknown>) => ({
+                    fromId: String(s.from || ''),
+                    fromName: String(s.fromName || 'Someone'),
+                    toId: String(s.to || ''),
+                    toName: String(s.toName || 'Someone'),
+                    amount: Number(s.amount || 0),
+                }));
+            return { settlements: pending, dataLoaded: true };
+        }
+        if (settData === null) {
+            return { settlements: [] as PendingSettlement[], dataLoaded: true };
+        }
+        return { settlements: [] as PendingSettlement[], dataLoaded: false };
+    }, [settData, currentUserId, isLoading]);
 
     // Auto-cycle through settlements
     useEffect(() => {

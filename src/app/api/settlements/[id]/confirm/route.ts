@@ -63,6 +63,7 @@ export async function POST(
         await prisma.notification.create({
             data: {
                 userId: settlement.toId,
+                actorId: user.id,
                 type: 'settlement_completed',
                 title: '✅ Payment Received',
                 body: `${settlement.from.name || 'Someone'} paid you ₹${(settlement.amount / 100).toLocaleString('en-IN')} via UPI${utrNumber ? ` (UTR: ${utrNumber})` : ''}`,
@@ -70,8 +71,37 @@ export async function POST(
             },
         });
 
-        // ── Auto-post settlement message in group chat ──
+        // ── Notify OTHER group members about the settlement ──
         if (settlement.trip?.groupId) {
+            try {
+                const groupWithMembers = await prisma.group.findUnique({
+                    where: { id: settlement.trip.groupId },
+                    include: { members: { select: { userId: true } } },
+                });
+                if (groupWithMembers) {
+                    const otherMemberIds = groupWithMembers.members
+                        .map(m => m.userId)
+                        .filter(id => id !== settlement.fromId && id !== settlement.toId);
+
+                    if (otherMemberIds.length > 0) {
+                        const amountStr = `₹${(settlement.amount / 100).toLocaleString('en-IN')}`;
+                        await prisma.notification.createMany({
+                            data: otherMemberIds.map(memberId => ({
+                                userId: memberId,
+                                actorId: user.id,
+                                type: 'settlement_completed',
+                                title: '💸 Settlement completed',
+                                body: `${settlement.from.name || 'Someone'} settled ${amountStr} with ${settlement.to.name || 'someone'} via UPI`,
+                                link: `/settlements`,
+                            })),
+                        });
+                    }
+                }
+            } catch {
+                // non-fatal — don't block the response
+            }
+
+            // ── Auto-post settlement message in group chat ──
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await (prisma as any).groupMessage.create({
                 data: {

@@ -18,6 +18,7 @@ export async function GET() {
 
         const groups = await prisma.group.findMany({
             where: {
+                deletedAt: null,
                 OR: [
                     { owner: { email: session.user.email } },
                     { members: { some: { user: { email: session.user.email } } } },

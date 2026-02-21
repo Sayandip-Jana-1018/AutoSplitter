@@ -90,7 +90,8 @@ model User {
   invitationsReceived GroupInvitation[] @relation("InvitationsReceived")
 
   // Phase 2 relations
-  notifications  Notification[]
+  notifications      Notification[] @relation("NotificationRecipient")
+  actorNotifications Notification[] @relation("NotificationActor")
   budgets        Budget[]
   auditLogs      AuditLog[]
   chatMessages   ChatMessage[]
@@ -174,6 +175,7 @@ model Transaction {
   updatedAt DateTime  @updatedAt
 
   @@index([tripId])
+  @@index([tripId, deletedAt])
   @@index([payerId])
 }
 
@@ -259,13 +261,15 @@ model GroupInvitation {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
+  actorId   String?  // Optional relation to the user who triggered the notification
   type      String   // "payment_reminder" | "new_expense" | "settlement_completed" | "group_activity"
   title     String
   body      String
   read      Boolean  @default(false)
   link      String?  // deep link e.g. "/settlements"
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor     User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 }

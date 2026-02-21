@@ -64,6 +64,7 @@ export async function POST(req: Request) {
             await prisma.notification.createMany({
                 data: existingMemberIds.map(memberId => ({
                     userId: memberId,
+                    actorId: user.id,
                     type: 'member_joined',
                     title: 'New member joined',
                     body: `${joinerName} joined "${group.name}"`,

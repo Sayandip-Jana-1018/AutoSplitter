@@ -25,9 +25,10 @@ export async function DELETE(
 
         // Verify the group exists and the current user is the owner or admin
         const group = await prisma.group.findFirst({
-            where: { id: groupId },
+            where: { id: groupId, deletedAt: null },
             include: {
-                members: { where: { userId: currentUser.id } },
+                members: true,
+                trips: { select: { id: true } },
             },
         });
 
@@ -36,7 +37,8 @@ export async function DELETE(
         }
 
         const isOwner = group.ownerId === currentUser.id;
-        const isAdmin = group.members[0]?.role === 'admin';
+        const currentMember = group.members.find(m => m.userId === currentUser.id);
+        const isAdmin = currentMember?.role === 'admin';
 
         if (!isOwner && !isAdmin) {
             return NextResponse.json({ error: 'Only the group owner or admin can remove members' }, { status: 403 });
@@ -52,46 +54,108 @@ export async function DELETE(
             return NextResponse.json({ error: 'Cannot remove yourself' }, { status: 400 });
         }
 
-        // Delete the membership
-        await prisma.groupMember.deleteMany({
-            where: {
-                groupId,
-                userId,
-            },
-        });
-
-        // Notify the removed user
-        await prisma.notification.create({
-            data: {
-                userId,
-                type: 'member_removed',
-                title: '🚪 Removed from group',
-                body: `You were removed from "${group.name}" by ${currentUser.name || 'an admin'}`,
-                link: '/groups', // Link to groups list since they can no longer access the specific group
-            },
-        });
-
-        // Notify remaining members
-        const remainingMemberIds = group.members
-            .filter(m => m.userId !== userId && m.userId !== currentUser.id)
-            .map(m => m.userId);
-
-        if (remainingMemberIds.length > 0) {
-            // Get removed user details to show name
-            const removedUser = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
-
-            await prisma.notification.createMany({
-                data: remainingMemberIds.map(memberId => ({
-                    userId: memberId,
-                    type: 'member_removed',
-                    title: '🚪 Member removed',
-                    body: `${removedUser?.name || 'A member'} was removed from "${group.name}"`,
-                    link: `/groups/${groupId}`,
-                })),
-            });
+        // Check if the member exists
+        const targetMember = group.members.find(m => m.userId === userId);
+        if (!targetMember) {
+            return NextResponse.json({ error: 'User is not a member of this group' }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true, message: 'Member removed' });
+        const tripIds = group.trips.map(t => t.id);
+
+        // ── Recalculate splits within a DB transaction ──
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete the membership
+            await tx.groupMember.deleteMany({
+                where: { groupId, userId },
+            });
+
+            // 2. Find all transactions where removed member has splits
+            if (tripIds.length > 0) {
+                const affectedTxns = await tx.transaction.findMany({
+                    where: {
+                        tripId: { in: tripIds },
+                        deletedAt: null,
+                        splits: { some: { userId } },
+                    },
+                    include: { splits: true },
+                });
+
+                for (const txn of affectedTxns) {
+                    const memberSplit = txn.splits.find(s => s.userId === userId);
+                    if (!memberSplit) continue;
+
+                    // Delete the removed member's split
+                    await tx.splitItem.delete({ where: { id: memberSplit.id } });
+
+                    // For equal splits: redistribute total evenly among remaining members
+                    if (txn.splitType === 'equal') {
+                        const remainingSplits = txn.splits.filter(s => s.userId !== userId);
+                        if (remainingSplits.length > 0) {
+                            const perPerson = Math.floor(txn.amount / remainingSplits.length);
+                            const remainder = txn.amount - perPerson * remainingSplits.length;
+
+                            for (let i = 0; i < remainingSplits.length; i++) {
+                                await tx.splitItem.update({
+                                    where: { id: remainingSplits[i].id },
+                                    data: { amount: perPerson + (i === 0 ? remainder : 0) },
+                                });
+                            }
+                        }
+                    }
+                    // For custom/percentage splits: just remove the member's split, leave others unchanged
+                }
+            }
+        });
+
+        // ── Get removed user details ──
+        const removedUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true },
+        });
+        const removedName = removedUser?.name || 'A member';
+
+        // ── Notify the removed user ──
+        try {
+            await prisma.notification.create({
+                data: {
+                    userId,
+                    actorId: currentUser.id,
+                    type: 'member_removed',
+                    title: '🚪 Removed from group',
+                    body: `You were removed from "${group.name}" by ${currentUser.name || 'an admin'}. Splits have been recalculated.`,
+                    link: '/groups',
+                },
+            });
+        } catch {
+            // non-fatal
+        }
+
+        // ── Notify remaining members ──
+        try {
+            const remainingMemberIds = group.members
+                .map(m => m.userId)
+                .filter(id => id !== userId && id !== currentUser.id);
+
+            if (remainingMemberIds.length > 0) {
+                await prisma.notification.createMany({
+                    data: remainingMemberIds.map(memberId => ({
+                        userId: memberId,
+                        actorId: currentUser.id,
+                        type: 'group_activity',
+                        title: '🚪 Member removed',
+                        body: `${removedName} was removed from "${group.name}" by ${currentUser.name || 'an admin'}. Equal splits have been recalculated.`,
+                        link: `/groups/${groupId}`,
+                    })),
+                });
+            }
+        } catch {
+            // non-fatal
+        }
+
+        return NextResponse.json({
+            success: true,
+            message: `${removedName} removed and splits recalculated`,
+        });
     } catch (error) {
         console.error('Remove member error:', error);
         return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 });

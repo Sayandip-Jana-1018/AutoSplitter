@@ -319,8 +319,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         const isActive = pathname.startsWith(item.href);
                         const Icon = item.icon;
                         return (
-                            <div key={item.href} data-tour={item.href} style={{ display: 'contents' }}>
+                            <div key={item.href} style={{ display: 'contents' }}>
                                 <motion.button
+                                    suppressHydrationWarning
+                                    data-tour={item.href}
                                     className={cn(
                                         styles.bottomNavItem,
                                         isActive && styles.bottomNavItemActive

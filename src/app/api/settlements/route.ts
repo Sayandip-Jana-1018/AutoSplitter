@@ -57,9 +57,8 @@ export async function GET(req: Request) {
             include: { splits: true },
         });
 
-        // Calculate net balances across all trips
+        // Calculate net balances across all trips for reference
         const balances: Record<string, number> = {};
-
         for (const txn of transactions) {
             balances[txn.payerId] = (balances[txn.payerId] || 0) + txn.amount;
             for (const split of txn.splits) {
@@ -67,7 +66,6 @@ export async function GET(req: Request) {
             }
         }
 
-        // Account for recorded settlements across all trips (excluding soft-deleted)
         const completedSettlements = await prisma.settlement.findMany({
             where: {
                 tripId: { in: tripIds },
@@ -81,29 +79,67 @@ export async function GET(req: Request) {
             balances[s.toId] = (balances[s.toId] || 0) - s.amount;
         }
 
-        // Greedy netting: minimize transfers
-        const debtors: { id: string; amount: number }[] = [];
-        const creditors: { id: string; amount: number }[] = [];
-
-        for (const [userId, balance] of Object.entries(balances)) {
-            if (balance < -1) debtors.push({ id: userId, amount: -balance });
-            else if (balance > 1) creditors.push({ id: userId, amount: balance });
-        }
-
-        debtors.sort((a, b) => b.amount - a.amount);
-        creditors.sort((a, b) => b.amount - a.amount);
-
         const transfers: { from: string; to: string; amount: number }[] = [];
-        let i = 0, j = 0;
-        while (i < debtors.length && j < creditors.length) {
-            const transfer = Math.min(debtors[i].amount, creditors[j].amount);
-            if (transfer > 0) {
-                transfers.push({ from: debtors[i].id, to: creditors[j].id, amount: transfer });
+
+        if (tripId) {
+            // ** TRIP-SPECIFIC VIEW: Greedy netting (Simplify Debts) **
+            const debtors: { id: string; amount: number }[] = [];
+            const creditors: { id: string; amount: number }[] = [];
+
+            for (const [userId, balance] of Object.entries(balances)) {
+                if (balance < -1) debtors.push({ id: userId, amount: -balance });
+                else if (balance > 1) creditors.push({ id: userId, amount: balance });
             }
-            debtors[i].amount -= transfer;
-            creditors[j].amount -= transfer;
-            if (debtors[i].amount === 0) i++;
-            if (creditors[j].amount === 0) j++;
+
+            debtors.sort((a, b) => b.amount - a.amount);
+            creditors.sort((a, b) => b.amount - a.amount);
+
+            let i = 0, j = 0;
+            while (i < debtors.length && j < creditors.length) {
+                const transfer = Math.min(debtors[i].amount, creditors[j].amount);
+                if (transfer > 0) {
+                    transfers.push({ from: debtors[i].id, to: creditors[j].id, amount: transfer });
+                }
+                debtors[i].amount -= transfer;
+                creditors[j].amount -= transfer;
+                if (debtors[i].amount === 0) i++;
+                if (creditors[j].amount === 0) j++;
+            }
+        } else {
+            // ** GLOBAL VIEW: Exact Pairwise Debts **
+            // We do not greedy net globally because users have incomplete disjoint universes.
+            const pairwise = new Map<string, number>();
+
+            const addDebt = (fromId: string, toId: string, amount: number) => {
+                if (fromId === toId) return;
+                const key = fromId < toId ? `${fromId}:${toId}` : `${toId}:${fromId}`;
+                const sign = fromId < toId ? 1 : -1;
+                const current = pairwise.get(key) || 0;
+                pairwise.set(key, current + (amount * sign));
+            };
+
+            for (const txn of transactions) {
+                for (const split of txn.splits) {
+                    // split.userId owes txn.payerId
+                    addDebt(split.userId, txn.payerId, split.amount);
+                }
+            }
+            for (const s of completedSettlements) {
+                // s.fromId paid s.toId => reduces debt or builds credit
+                addDebt(s.fromId, s.toId, -s.amount);
+            }
+
+            for (const [key, amount] of pairwise.entries()) {
+                if (Math.abs(amount) < 1) continue;
+                const [userA, userB] = key.split(':');
+                if (amount > 0) {
+                    // userA owes userB
+                    transfers.push({ from: userA, to: userB, amount });
+                } else {
+                    // userB owes userA
+                    transfers.push({ from: userB, to: userA, amount: -amount });
+                }
+            }
         }
 
         // Resolve user names for computed transfers
@@ -231,6 +267,7 @@ export async function POST(req: Request) {
             await prisma.notification.create({
                 data: {
                     userId: parsed.data.toUserId,
+                    actorId: user.id,
                     type: 'settlement_completed',
                     title: '✅ Payment Received',
                     body: `${user.name || 'Someone'} paid you ₹${(parsed.data.amount / 100).toLocaleString('en-IN')} via ${parsed.data.method}`,

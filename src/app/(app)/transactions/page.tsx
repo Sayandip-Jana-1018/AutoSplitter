@@ -351,8 +351,8 @@ export default function TransactionsPage() {
 
                                                 {/* Member Split Toggles */}
                                                 {(!txn.splitType || txn.splitType === 'equal') && txn.trip?.group.members && (
-                                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, marginBottom: 8 }}>
-                                                        <div style={{ width: '100%', fontSize: '11px', color: 'var(--fg-tertiary)' }}>Split between:</div>
+                                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8, marginBottom: 8 }}>
+                                                        <div style={{ width: '100%', textAlign: 'center', fontSize: '11px', color: 'var(--fg-tertiary)' }}>Split between:</div>
                                                         {txn.trip.group.members.map(m => {
                                                             const isSelected = editSplitAmong.has(m.userId);
                                                             return (
@@ -390,76 +390,92 @@ export default function TransactionsPage() {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                                                {/* Category icon with gradient bg */}
-                                                <div style={{
-                                                    width: 44, height: 44, borderRadius: 'var(--radius-xl)',
-                                                    background: `linear-gradient(135deg, ${catConfig.color}15, ${catConfig.color}08)`,
-                                                    border: `1px solid ${catConfig.color}12`,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    flexShrink: 0, color: catConfig.color,
-                                                }}>
-                                                    <CategoryIcon category={txn.category} size={20} />
-                                                </div>
-                                                {/* Details */}
-                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                gap: 12, padding: 4
+                                            }}>
+                                                {/* Left Section: Icon and Details */}
+                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flex: 1, minWidth: 0 }}>
+                                                    {/* Category Icon */}
                                                     <div style={{
-                                                        fontSize: 'var(--text-sm)', fontWeight: 700,
-                                                        color: 'var(--fg-primary)',
-                                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                                        lineHeight: 1.3,
+                                                        width: 44, height: 44, borderRadius: 14,
+                                                        background: `linear-gradient(135deg, ${catConfig.color}15, ${catConfig.color}05)`,
+                                                        border: `1px solid ${catConfig.color}1A`,
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        flexShrink: 0, color: catConfig.color, marginTop: 2,
                                                     }}>
-                                                        {txn.title}
+                                                        <CategoryIcon category={txn.category} size={22} />
                                                     </div>
-                                                    <div style={{
-                                                        fontSize: '11px', color: 'var(--fg-tertiary)',
-                                                        display: 'flex', gap: 6, alignItems: 'center', marginTop: 3,
-                                                        flexWrap: 'wrap',
-                                                    }}>
-                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                                                            <Users size={10} style={{ opacity: 0.6 }} />
-                                                            {payerName.split(' ')[0]}
-                                                        </span>
-                                                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--fg-muted)', opacity: 0.4 }} />
-                                                        <span>{timeAgo(txn.createdAt)}</span>
-                                                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--fg-muted)', opacity: 0.4 }} />
-                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                                                            <PaymentIcon method={txn.method} size={10} /> {metConfig.label}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                {/* Amount + actions */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', flexShrink: 0 }}>
-                                                    <div style={{ textAlign: 'right', marginRight: 4 }}>
+
+                                                    {/* Text Content */}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flex: 1, minWidth: 0 }}>
                                                         <div style={{
-                                                            fontWeight: 800, fontSize: 'var(--text-sm)',
-                                                            background: 'linear-gradient(135deg, var(--accent-400), var(--accent-600))',
-                                                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                                                            lineHeight: 1.3,
+                                                            fontSize: 16, fontWeight: 700,
+                                                            color: 'var(--fg-primary)', letterSpacing: '-0.3px',
+                                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                                         }}>
-                                                            {formatCurrency(txn.amount)}
+                                                            {txn.title}
                                                         </div>
                                                         <div style={{
-                                                            fontSize: '10px', color: 'var(--fg-muted)',
-                                                            display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'flex-end',
+                                                            fontSize: 13, color: 'var(--fg-tertiary)', fontWeight: 500,
+                                                            display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center',
+                                                            flexWrap: 'nowrap', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
                                                         }}>
-                                                            <Users size={9} /> ÷{txn.splits?.length || 1}
+                                                            <span>Paid by {payerName.split(' ')[0]}</span>
+                                                            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--border-strong)' }} />
+                                                            <span>{timeAgo(txn.createdAt)}</span>
                                                         </div>
+                                                        {txn.method && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 4 }}>
+                                                                <div style={{
+                                                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                                    background: 'var(--surface-sunken)', padding: '3px 8px',
+                                                                    borderRadius: 6, fontSize: 11, fontWeight: 600,
+                                                                    color: 'var(--fg-secondary)', border: '1px solid var(--border-subtle)',
+                                                                }}>
+                                                                    <PaymentIcon method={txn.method} size={12} />
+                                                                    <span>{metConfig.label}</span>
+                                                                </div>
+                                                                {txn.splits?.length > 1 && (
+                                                                    <div style={{
+                                                                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                                        background: 'var(--surface-sunken)', padding: '3px 8px',
+                                                                        borderRadius: 6, fontSize: 11, fontWeight: 600,
+                                                                        color: 'var(--fg-secondary)', border: '1px solid var(--border-subtle)',
+                                                                    }}>
+                                                                        <Users size={12} opacity={0.7} />
+                                                                        <span>Split with {txn.splits.length}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                </div>
+
+                                                {/* Right Section: Amount and Actions */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
+                                                    <div style={{
+                                                        fontWeight: 800, fontSize: 18,
+                                                        color: 'var(--fg-primary)', letterSpacing: '-0.5px',
+                                                    }}>
+                                                        {formatCurrency(txn.amount)}
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); startEdit(txn); }}
                                                             style={{
-                                                                border: 'none', cursor: 'pointer',
-                                                                background: 'rgba(var(--accent-500-rgb), 0.08)',
-                                                                color: 'var(--accent-400)',
-                                                                padding: 6, borderRadius: 'var(--radius-lg)',
-                                                                opacity: 0.85, transition: 'all 0.2s', lineHeight: 0,
+                                                                cursor: 'pointer',
+                                                                background: 'var(--surface-card)',
+                                                                color: 'var(--fg-secondary)',
+                                                                padding: '6px', borderRadius: 8,
+                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                                                border: '1px solid var(--border-subtle)',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                width: 30, height: 30,
+                                                                transition: 'all 0.2s ease',
                                                             }}
-                                                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.15)'; }}
-                                                            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.background = 'rgba(var(--accent-500-rgb), 0.08)'; }}
+                                                            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-500)'; e.currentTarget.style.borderColor = 'var(--accent-300)'; }}
+                                                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--fg-secondary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
                                                             title="Edit"
                                                         >
                                                             <Pencil size={14} />
@@ -468,16 +484,18 @@ export default function TransactionsPage() {
                                                             onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(txn.id); }}
                                                             disabled={deletingId === txn.id}
                                                             style={{
-                                                                border: 'none', cursor: 'pointer',
-                                                                background: 'rgba(239, 68, 68, 0.08)',
-                                                                color: '#ef4444',
-                                                                padding: 6, borderRadius: 'var(--radius-lg)',
-                                                                opacity: deletingId === txn.id ? 0.3 : 0.85, transition: 'all 0.2s', lineHeight: 0,
+                                                                cursor: 'pointer',
+                                                                background: 'var(--surface-card)',
+                                                                color: 'var(--fg-secondary)',
+                                                                padding: '6px', borderRadius: 8,
+                                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                                                border: '1px solid var(--border-subtle)',
                                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                width: 30, height: 30,
+                                                                transition: 'all 0.2s ease',
+                                                                opacity: deletingId === txn.id ? 0.3 : 1,
                                                             }}
-                                                            onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; }}
-                                                            onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'; }}
+                                                            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#fca5a5'; }}
+                                                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--fg-secondary)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
                                                             title="Delete"
                                                         >
                                                             <Trash2 size={14} />

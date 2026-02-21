@@ -216,13 +216,18 @@ erDiagram
 ### Core Functionality
 | Feature | Description |
 |---|---|
-| **Expense Tracking** | Create, edit, delete expenses with categories, payment methods, and receipt URLs |
+| **Expense Tracking** | Create, edit, soft-delete expenses with categories, payment methods, and receipt URLs |
 | **Group Management** | Create groups, invite via link/code, manage members with admin roles |
+| **Group Deletion** | Owner-only soft delete with atomic cascade — soft-deletes all transactions, cancels pending settlements, notifies all members |
+| **Member Removal** | Owner/admin removes member → equal splits auto-recalculated, orphaned SplitItems cleaned, all members notified |
 | **Trip Scoping** | Organize expenses within trips per group with date ranges and currency |
 | **Split Types** | Equal, percentage, custom, and item-based splitting |
 | **Settlements** | Track who owes whom, mark as completed, with UPI deep-links and auto-sync |
 | **Settlement Security** | Self-settlement block, 60s duplicate check, membership verification, soft-delete filters |
+| **UPI Payment Notifications** | All group members notified on UPI payment — receiver gets ✅, others get 💸 |
+| **Transaction Edit Notifications** | All group members notified when any expense is edited (✏️) |
 | **Debt Simplification** | Dual algorithm: greedy netting + optimized exact-match pruning (auto-picks fewer transfers) |
+| **Per-Group Settlement Graphs** | Swipeable carousel with per-group settlement visualization + global overview |
 | **Analytics Dashboard** | 6-month spending trends, category breakdown, budget vs actual comparison, smart AI insights |
 | **Budget Tracking** | Set monthly budgets per category, compare against actual spending |
 | **CSV/JSON Export** | Export transaction data for external use |
@@ -272,8 +277,10 @@ erDiagram
 | **System Health Dashboard** | Real-time service status, DB latency, data counts, server uptime |
 | **Audit Logging** | Track all data mutations (create/update/delete) with entity details |
 | **Feature Flags** | Toggle features on/off without code changes |
-| **Rate Limiting** | In-memory sliding-window rate limiter (50 req/min per IP) |
-| **API Middleware** | Global request logging and rate limiting via Next.js middleware |
+| **Rate Limiting Middleware** | Tiered in-memory rate limiter: 5/hr register, 10/15min auth, 30/min settlements, 120/min default |
+| **Security Headers** | HSTS, X-Frame-Options DENY, X-Content-Type-Options, Permissions-Policy (no camera/mic/geo), Referrer-Policy |
+| **Soft Deletes** | All destructive operations (group delete, transaction delete, settlement cancel) use soft deletes for data recovery |
+| **Permission Model** | Delete group = owner only, remove member = owner/admin only, delete/edit transaction = payer or group owner only |
 
 ---
 
@@ -433,17 +440,22 @@ npm start
 | `POST` | `/api/register` | Create a new user account |
 | `GET` | `/api/me` | Get current user profile |
 | `GET` | `/api/me/avatar` | Get user avatar |
-| `GET` | `/api/groups` | List user's groups |
+| `GET` | `/api/groups` | List user's groups (filters soft-deleted) |
 | `POST` | `/api/groups` | Create a new group |
 | `GET` | `/api/groups/:id` | Get group details with members & balances |
+| `DELETE` | `/api/groups/:id` | **Soft-delete group** (owner only) — cascades to transactions & settlements, notifies all members |
+| `DELETE` | `/api/groups/:id/members` | **Remove member** (owner/admin) — recalculates equal splits, cleans orphaned data |
 | `GET` | `/api/groups/:id/balances` | Compute balances & suggested settlements |
 | `POST` | `/api/groups/join` | Join a group via invite code |
+| `GET` | `/api/settlements/by-group` | **Batch endpoint** — all per-group settlements + global overview in one call |
 | `GET` | `/api/transactions` | List transactions (supports `?limit=`) |
 | `POST` | `/api/transactions` | Create transaction with splits |
-| `PUT` | `/api/transactions/:id` | Update transaction |
-| `DELETE` | `/api/transactions/:id` | Delete transaction |
+| `PUT` | `/api/transactions/:id` | Update transaction — notifies all group members |
+| `DELETE` | `/api/transactions/:id` | **Soft-delete** transaction — notifies all group members |
 | `GET` | `/api/settlements` | List settlements |
 | `POST` | `/api/settlements` | Create or update settlement |
+| `POST` | `/api/settlements/:id/pay` | Generate UPI deep-link and mark as initiated |
+| `POST` | `/api/settlements/:id/confirm` | Confirm UPI payment — notifies **all** group members |
 | `GET` | `/api/trips` | List trips |
 | `POST` | `/api/trips` | Create a trip |
 | `GET` | `/api/search?q=` | Global search |
@@ -499,6 +511,9 @@ Theme preference is persisted in `localStorage` and applied via CSS class on `<h
 
 ## 📱 PWA-Ready Features
 
+- **Fluid responsive design** — `clamp(14px, 3.6vw, 16px)` base font scales across all phone sizes (6.5" to 7.0"+)
+- **viewport-fit: cover** — proper notch/safe-area handling on all devices
+- **Auto-generated service worker** — `@ducanh2912/next-pwa` with cache-busting (no stale assets)
 - **Responsive layout** with mobile-first bottom navigation + FAB
 - **Pull-to-refresh** touch gesture on dashboard
 - **Haptic feedback** via Vibration API

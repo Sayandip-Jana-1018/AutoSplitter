@@ -10,7 +10,7 @@ import Avatar from '@/components/ui/Avatar';
 import { useToast } from '@/components/ui/Toast';
 import { PaymentIcon } from '@/components/ui/Icons';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { CATEGORIES, PAYMENT_METHODS, formatCurrency, toPaise, cn } from '@/lib/utils';
+import { CATEGORIES, PAYMENT_METHODS, formatCurrency, toPaise, cn, getCategoryData } from '@/lib/utils';
 
 import styles from './quickadd.module.css';
 
@@ -46,6 +46,10 @@ function QuickAddContent() {
     const [showGroups, setShowGroups] = useState(false);
     const [saving, setSaving] = useState(false);
     const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+
+    // Custom Category State
+    const [isCustomCategory, setIsCustomCategory] = useState(false);
+    const [customCatValue, setCustomCatValue] = useState('');
 
     // Custom split state
     const [splitType, setSplitType] = useState<'equal' | 'custom'>('equal');
@@ -211,6 +215,8 @@ function QuickAddContent() {
         if (navigator.vibrate) navigator.vibrate(10);
     }, [amount]);
 
+    const catData = getCategoryData(category);
+
     const handleSave = async () => {
         // Use category label as fallback title
         const effectiveTitle = title.trim() || catData.label;
@@ -256,6 +262,7 @@ function QuickAddContent() {
                 category,
                 method,
                 splitType,
+                payerId, // send who actually paid
             };
 
             const paramReceiptUrl = searchParams.get('receiptUrl');
@@ -294,7 +301,6 @@ function QuickAddContent() {
     const payerDisplay = payerMember
         ? (payerMember.id === currentUser?.id ? `${payerMember.name} (You)` : payerMember.name)
         : 'Select';
-    const catData = CATEGORIES[category];
     const methodData = PAYMENT_METHODS[method];
 
     if (loadingGroups || userLoading) {
@@ -567,27 +573,73 @@ function QuickAddContent() {
             {/* ── Category Picker Modal ── */}
             <Modal
                 isOpen={showCategories}
-                onClose={() => setShowCategories(false)}
-                title="Category"
+                onClose={() => { setShowCategories(false); setIsCustomCategory(false); }}
+                title={isCustomCategory ? "Custom Category" : "Category"}
                 size="small"
                 transparentOverlay
             >
-                <div className={styles.categoryGrid}>
-                    {Object.entries(CATEGORIES).map(([key, val]) => (
-                        <motion.button
-                            key={key}
-                            className={cn(
-                                styles.categoryItem,
-                                category === key && styles.categoryItemActive,
-                            )}
-                            whileTap={{ scale: 0.93 }}
-                            onClick={() => { setCategory(key); setShowCategories(false); }}
+                {isCustomCategory ? (
+                    <div style={{ padding: '16px 8px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div style={{ position: 'relative' }}>
+                            <span style={{ position: 'absolute', left: 14, top: 12, fontSize: 18 }}>📌</span>
+                            <input
+                                autoFocus
+                                placeholder="e.g. Flight to Goa"
+                                value={customCatValue}
+                                onChange={(e) => setCustomCatValue(e.target.value)}
+                                style={{
+                                    width: '100%', padding: '14px 16px 14px 44px', borderRadius: '14px',
+                                    border: '1px solid var(--border-subtle)', background: 'var(--bg-glass)',
+                                    color: 'var(--fg-primary)', fontSize: '15px', fontWeight: 500,
+                                    outline: 'none', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
+                                }}
+                            />
+                        </div>
+                        <Button
+                            fullWidth
+                            disabled={!customCatValue.trim()}
+                            onClick={() => {
+                                setCategory(customCatValue.trim());
+                                setShowCategories(false);
+                                setIsCustomCategory(false);
+                            }}
                         >
-                            <span className={styles.categoryEmoji}>{val.emoji}</span>
-                            <span className={styles.categoryLabel}>{val.label}</span>
-                        </motion.button>
-                    ))}
-                </div>
+                            Save Category
+                        </Button>
+                        <button
+                            onClick={() => { setIsCustomCategory(false); setCustomCatValue(''); }}
+                            style={{ marginTop: 2, background: 'none', border: 'none', color: 'var(--fg-tertiary)', fontSize: 13, cursor: 'pointer', padding: 8, fontWeight: 500 }}
+                        >
+                            Back to preset categories
+                        </button>
+                    </div>
+                ) : (
+                    <div className={styles.categoryGrid}>
+                        {Object.entries(CATEGORIES).map(([key, val]) => (
+                            <motion.button
+                                key={key}
+                                className={cn(
+                                    styles.categoryItem,
+                                    category === key && styles.categoryItemActive,
+                                    (!CATEGORIES[category] && key === 'other') && styles.categoryItemActive
+                                )}
+                                whileTap={{ scale: 0.93 }}
+                                onClick={() => {
+                                    if (key === 'other') {
+                                        setIsCustomCategory(true);
+                                        setCustomCatValue('');
+                                    } else {
+                                        setCategory(key);
+                                        setShowCategories(false);
+                                    }
+                                }}
+                            >
+                                <span className={styles.categoryEmoji}>{val.emoji}</span>
+                                <span className={styles.categoryLabel}>{val.label}</span>
+                            </motion.button>
+                        ))}
+                    </div>
+                )}
             </Modal>
 
             {/* ── Payer Picker Modal ── */}

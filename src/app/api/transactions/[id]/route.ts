@@ -147,8 +147,35 @@ export async function PUT(
             include: {
                 payer: { select: { id: true, name: true, image: true } },
                 splits: { include: { user: { select: { id: true, name: true } } } },
+                trip: { include: { group: { include: { members: true } } } },
             },
         });
+
+        // Notify all group members about the edit
+        if (full?.trip?.group?.members) {
+            try {
+                const editorName = user.name || 'Someone';
+                const amountStr = `₹${(full.amount / 100).toLocaleString('en-IN')}`;
+                const otherIds = full.trip.group.members
+                    .map((m: { userId: string }) => m.userId)
+                    .filter((mId: string) => mId !== user.id);
+
+                if (otherIds.length > 0) {
+                    await prisma.notification.createMany({
+                        data: otherIds.map((memberId: string) => ({
+                            userId: memberId,
+                            actorId: user.id,
+                            type: 'group_activity',
+                            title: `✏️ ${editorName} edited an expense`,
+                            body: `"${full.title}" updated to ${amountStr} in ${full.trip.group.name}.`,
+                            link: `/groups/${full.trip.group.id}`,
+                        })),
+                    });
+                }
+            } catch {
+                // Notification failure shouldn't block the response
+            }
+        }
 
         return NextResponse.json(full);
     } catch (error) {
@@ -181,13 +208,64 @@ export async function DELETE(
                     { trip: { group: { ownerId: user.id } } },
                 ],
             },
+            include: {
+                trip: {
+                    include: {
+                        group: {
+                            include: { members: true },
+                        },
+                    },
+                },
+            },
         });
 
         if (!transaction) {
             return NextResponse.json({ error: 'Transaction not found or access denied' }, { status: 404 });
         }
 
-        await prisma.transaction.delete({ where: { id } });
+        const amountFormatted = `₹${(transaction.amount / 100).toLocaleString('en-IN')}`;
+
+        // 1. Soft-delete the transaction (preserve data)
+        await prisma.transaction.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+        });
+
+        // 2. Best-effort to clean up old "added" notification
+        try {
+            await prisma.notification.deleteMany({
+                where: {
+                    type: 'new_expense',
+                    link: `/groups/${transaction.trip.group.id}`,
+                    body: { contains: transaction.title },
+                },
+            });
+        } catch {
+            // ignore non-fatal error
+        }
+
+        // 3. Notify members that it was removed
+        try {
+            const otherMemberIds = transaction.trip.group.members
+                .map((m: { userId: string }) => m.userId)
+                .filter((mId: string) => mId !== user.id);
+
+            if (otherMemberIds.length > 0) {
+                const deleterName = user.name || 'Someone';
+                await prisma.notification.createMany({
+                    data: otherMemberIds.map((memberId: string) => ({
+                        userId: memberId,
+                        actorId: user.id,
+                        type: 'group_activity',
+                        title: `🗑️ ${deleterName} deleted an expense`,
+                        body: `${transaction.title} (${amountFormatted}) was removed from ${transaction.trip.group.name}.`,
+                        link: `/groups/${transaction.trip.group.id}`,
+                    })),
+                });
+            }
+        } catch {
+            // Notification failure shouldn't block the transaction removal
+        }
 
         return NextResponse.json({ message: 'Transaction deleted' });
     } catch {

@@ -14,6 +14,7 @@ interface Notification {
     read: boolean;
     link?: string;
     createdAt: string;
+    actor?: { name: string | null; image: string | null };
 }
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -396,19 +397,29 @@ export default function NotificationPanel() {
                                                         e.currentTarget.style.background = notif.read ? 'transparent' : 'rgba(var(--accent-500-rgb), 0.03)';
                                                     }}
                                                 >
-                                                    {/* ── Type Icon ── */}
+                                                    {/* ── Type or Actor Icon ── */}
                                                     <div style={{
                                                         width: 36, height: 36,
                                                         borderRadius: 10,
-                                                        background: gradient,
+                                                        background: notif.actor?.image ? 'transparent' : gradient,
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         color: color,
                                                         flexShrink: 0,
                                                         marginTop: 1,
+                                                        overflow: 'hidden',
                                                     }}>
-                                                        {TYPE_ICONS[notif.type] || <Bell size={15} />}
+                                                        {notif.actor?.image ? (
+                                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                                            <img
+                                                                src={notif.actor.image}
+                                                                alt={notif.actor.name || 'User'}
+                                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                            />
+                                                        ) : (
+                                                            TYPE_ICONS[notif.type] || <Bell size={15} />
+                                                        )}
                                                     </div>
 
                                                     {/* ── Content ── */}

@@ -149,7 +149,7 @@ export default function DashboardPage() {
     // Derive all dashboard data from SWR responses (no useEffect + setState)
     const { stats, recentTxns, settlements, members } = useMemo(() => {
         const groups = groupsData?.groups || groupsData || [];
-        const txns = txnsData?.transactions || txnsData || [];
+        const txns = Array.isArray(txnsData?.transactions) ? txnsData.transactions : Array.isArray(txnsData) ? txnsData : [];
         const pending = Array.isArray(settData?.computed) ? settData.computed : [];
 
         const newActiveTrips = groups.length;

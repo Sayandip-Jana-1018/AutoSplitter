@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRightLeft, Check, Download, Share2, GitBranch, Inbox, CreditCard, Bell } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import useSWR from 'swr';
+import { ArrowRightLeft, Check, Download, Share2, GitBranch, Inbox, CreditCard, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
@@ -14,6 +15,9 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { formatCurrency } from '@/lib/utils';
 import { exportAsText, shareSettlement } from '@/lib/export';
 import { SettlementSkeleton } from '@/components/ui/Skeleton';
+
+/* ── SWR fetcher ── */
+const fetcher = (url: string) => fetch(url).then(r => r.ok ? r.json() : null);
 
 /* ── Glassmorphic styles ── */
 const glass: React.CSSProperties = {
@@ -29,135 +33,162 @@ const glass: React.CSSProperties = {
 
 /* ── Types ── */
 interface UserRef { id: string; name: string | null; image?: string | null }
-interface ComputedTransfer { from: string; to: string; amount: number; fromName?: string; toName?: string; fromImage?: string | null; toImage?: string | null; toUpiId?: string | null }
+interface ComputedTransfer {
+    from: string; to: string; amount: number;
+    fromName?: string; toName?: string;
+    fromImage?: string | null; toImage?: string | null;
+    toUpiId?: string | null;
+}
 interface RecordedSettlement {
     id: string; fromId: string; toId: string; amount: number;
     status: string; method: string | null; note: string | null;
     from: UserRef; to: UserRef; createdAt: string;
 }
-interface SettlementApiResponse {
+interface GroupData {
+    groupId: string; groupName: string; groupEmoji: string; tripId: string;
+    members: { id: string; name: string; image: string | null }[];
     computed: ComputedTransfer[];
     recorded: RecordedSettlement[];
-    balances: Record<string, number>;
+}
+interface ByGroupResponse {
+    groups: GroupData[];
+    global: { computed: ComputedTransfer[]; recorded: RecordedSettlement[] };
 }
 
+/* ── Main component ── */
 export default function SettlementsPage() {
-    const [loading, setLoading] = useState(true);
     const { user: currentUser } = useCurrentUser();
     const { toast } = useToast();
-    const [computed, setComputed] = useState<ComputedTransfer[]>([]);
-    const [recorded, setRecorded] = useState<RecordedSettlement[]>([]);
-    const [memberNames, setMemberNames] = useState<Record<string, string>>({});
-    const [memberImages, setMemberImages] = useState<Record<string, string | null>>({});
-    const [graphMembers, setGraphMembers] = useState<string[]>([]);
-    const [activeTripId, setActiveTripId] = useState<string>('');
+    const [activeSlide, setActiveSlide] = useState(0); // 0 = "All", 1..N = per-group
     const [tab, setTab] = useState<'pending' | 'settled'>('pending');
-    const [showGraph, setShowGraph] = useState(false);
-    const [confirmSettle, setConfirmSettle] = useState<{ from: string; to: string; amount: number } | null>(null);
+    const [confirmSettle, setConfirmSettle] = useState<{ from: string; to: string; amount: number; tripId: string } | null>(null);
     const [settling, setSettling] = useState(false);
     const [upiModal, setUpiModal] = useState<{ open: boolean; amount: number; payeeName: string; payeeUpiId?: string; settlementId?: string }>({ open: false, amount: 0, payeeName: '' });
 
-    const fetchSettlements = useCallback(async () => {
-        try {
-            const groupsRes = await fetch('/api/groups');
-            if (!groupsRes.ok) { setLoading(false); return; }
-            const groups = await groupsRes.json();
-            if (!Array.isArray(groups) || groups.length === 0) { setLoading(false); return; }
-
-            // Build name + image maps from ALL group members
-            const nameMap: Record<string, string> = {};
-            const imgMap: Record<string, string | null> = {};
-            for (const g of groups) {
-                if (g.members) {
-                    for (const m of g.members) {
-                        const userId = m.userId || m.user?.id;
-                        const name = m.user?.name || m.name || 'Unknown';
-                        if (userId) {
-                            nameMap[userId] = name;
-                            imgMap[userId] = m.user?.image || null;
-                        }
-                    }
-                }
-            }
-            setMemberNames(nameMap);
-            setMemberImages(imgMap);
-
-            // Collect active trip IDs from ALL groups
-            let firstTripId = '';
-            const detailPromises = groups.map((g: { id: string }) => fetch(`/api/groups/${g.id}`).then(r => r.ok ? r.json() : null));
-            const details = await Promise.all(detailPromises);
-
-            const tripIds: string[] = [];
-            for (const detail of details) {
-                if (detail?.activeTrip?.id) {
-                    tripIds.push(detail.activeTrip.id);
-                    if (!firstTripId) firstTripId = detail.activeTrip.id;
-                }
-            }
-
-            if (tripIds.length === 0) { setLoading(false); return; }
-            setActiveTripId(firstTripId);
-
-            // Fetch global settlements (the API now aggregates across all trips when no tripId is given)
-            const settRes = await fetch('/api/settlements');
-            if (settRes.ok) {
-                const data: SettlementApiResponse = await settRes.json();
-                setComputed(data.computed || []);
-                setRecorded(data.recorded || []);
-                const allUserIds = new Set<string>();
-                for (const t of data.computed) { allUserIds.add(t.from); allUserIds.add(t.to); }
-                for (const r of data.recorded) { allUserIds.add(r.fromId); allUserIds.add(r.toId); }
-                setGraphMembers(Array.from(allUserIds).map(id => nameMap[id] || id));
-            }
-        } catch (err) {
-            console.error('Failed to fetch settlements:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => { fetchSettlements(); }, [fetchSettlements]);
+    // SWR data fetching — single call replaces N+2 waterfall
+    const { data, isLoading, mutate } = useSWR<ByGroupResponse>('/api/settlements/by-group', fetcher);
 
     const currentUserId = currentUser?.id || null;
 
-    const pendingSettlements = computed.map((t, i) => ({
-        id: `computed-${i}`,
-        from: { name: memberNames[t.from] || t.fromName || t.from, id: t.from, image: t.fromImage || memberImages[t.from] || null },
-        to: { name: memberNames[t.to] || t.toName || t.to, id: t.to, image: t.toImage || memberImages[t.to] || null },
-        amount: t.amount, status: 'pending' as const,
-        toUpiId: t.toUpiId || null,
+    // Derive all computed values from SWR data
+    const { slides, nameMap, imageMap, activePending, activeSettled } = useMemo(() => {
+        const groups = data?.groups || [];
+        const globalComputed = data?.global?.computed || [];
+        const globalRecorded = data?.global?.recorded || [];
+
+        // Build name/image maps
+        const nMap: Record<string, string> = {};
+        const iMap: Record<string, string | null> = {};
+        for (const g of groups) {
+            for (const m of g.members) {
+                nMap[m.id] = m.name;
+                iMap[m.id] = m.image;
+            }
+        }
+
+        // Slide 0 = "All Groups" global view
+        const slideData = [
+            {
+                label: 'All Groups',
+                emoji: '🌐',
+                computed: globalComputed,
+                recorded: globalRecorded,
+                members: [] as { id: string; name: string; image: string | null }[],
+                tripId: '',
+                groupId: '',
+            },
+            ...groups.map(g => ({
+                label: g.groupName,
+                emoji: g.groupEmoji,
+                computed: g.computed,
+                recorded: g.recorded,
+                members: g.members,
+                tripId: g.tripId,
+                groupId: g.groupId,
+            })),
+        ];
+
+        // Build pending/settled lists
+        const buildPending = (computed: ComputedTransfer[], tripId: string) =>
+            computed.map((t, i) => ({
+                id: `computed-${tripId}-${i}`,
+                from: { name: nMap[t.from] || t.fromName || t.from, id: t.from, image: t.fromImage || iMap[t.from] || null },
+                to: { name: nMap[t.to] || t.toName || t.to, id: t.to, image: t.toImage || iMap[t.to] || null },
+                amount: t.amount,
+                status: 'pending' as const,
+                toUpiId: t.toUpiId || null,
+                tripId,
+            }));
+
+        const buildSettled = (recorded: RecordedSettlement[]) =>
+            recorded
+                .filter(r => ['completed', 'confirmed', 'paid_pending'].includes(r.status))
+                .map(r => ({
+                    id: r.id,
+                    from: { name: r.from.name || 'Unknown', id: r.fromId, image: r.from.image || null },
+                    to: { name: r.to.name || 'Unknown', id: r.toId, image: r.to.image || null },
+                    amount: r.amount,
+                    status: 'settled' as const,
+                    toUpiId: null as string | null,
+                    tripId: '',
+                }));
+
+        const allP = buildPending(globalComputed, '');
+        const allS = buildSettled(globalRecorded);
+
+        const active = slideData[activeSlide] || slideData[0];
+        const aP = activeSlide === 0 ? allP : buildPending(active.computed, active.tripId);
+        const aS = activeSlide === 0 ? allS : buildSettled(active.recorded);
+
+        return {
+            slides: slideData,
+            nameMap: nMap,
+            imageMap: iMap,
+            allPending: allP,
+            allSettled: allS,
+            activePending: aP,
+            activeSettled: aS,
+        };
+    }, [data, activeSlide]);
+
+    const filteredSettlements = tab === 'pending' ? activePending : activeSettled;
+
+    const totalYouOwe = activePending.filter(s => s.from.id === currentUserId).reduce((sum, s) => sum + s.amount, 0);
+    const totalOwedToYou = activePending.filter(s => s.to.id === currentUserId).reduce((sum, s) => sum + s.amount, 0);
+
+    // Carousel navigation
+    const slideCount = slides.length;
+    const goToSlide = useCallback((idx: number) => {
+        setActiveSlide(Math.max(0, Math.min(idx, slideCount - 1)));
+    }, [slideCount]);
+
+    const handleDragEnd = useCallback((_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        const threshold = 50;
+        if (info.offset.x < -threshold && activeSlide < slideCount - 1) {
+            setActiveSlide(prev => prev + 1);
+        } else if (info.offset.x > threshold && activeSlide > 0) {
+            setActiveSlide(prev => prev - 1);
+        }
+    }, [activeSlide, slideCount]);
+
+    // Build graph data for the active group slide
+    const activeSlideData = slides[activeSlide];
+    const graphMembers = activeSlideData?.members?.map(m => m.name) || [];
+    const graphSettlements = (activeSlideData?.computed || []).map(s => ({
+        from: nameMap[s.from] || s.fromName || s.from,
+        to: nameMap[s.to] || s.toName || s.to,
+        amount: s.amount,
     }));
-
-    const settledSettlements = recorded
-        .filter(r => ['completed', 'confirmed', 'paid_pending'].includes(r.status))
-        .map(r => ({
-            id: r.id,
-            from: { name: r.from.name || 'Unknown', id: r.fromId, image: r.from.image || null },
-            to: { name: r.to.name || 'Unknown', id: r.toId, image: r.to.image || null },
-            amount: r.amount, status: 'settled' as const,
-        }));
-
-    const allSettlements = [...pendingSettlements, ...settledSettlements];
-    const filteredSettlements = allSettlements.filter(s =>
-        tab === 'pending' ? s.status === 'pending' : s.status === 'settled'
-    );
-
-    const totalYouOwe = pendingSettlements.filter(s => s.from.id === currentUserId).reduce((sum, s) => sum + s.amount, 0);
-    const totalOwedToYou = pendingSettlements.filter(s => s.to.id === currentUserId).reduce((sum, s) => sum + s.amount, 0);
-
-    const graphSettlements = pendingSettlements.map(s => ({
-        from: s.from.name, to: s.to.name, amount: s.amount,
-    }));
-
-    // Build name→image map for graph nodes
     const graphMemberImages: Record<string, string | null> = {};
-    for (const [id, name] of Object.entries(memberNames)) {
-        graphMemberImages[name] = memberImages[id] || null;
+    for (const m of activeSlideData?.members || []) {
+        graphMemberImages[m.name] = m.image;
     }
 
+    // Handle mark as paid
     const handleMarkAsPaid = async () => {
         if (!confirmSettle) return;
-        if (!activeTripId) {
+        const tripId = confirmSettle.tripId || activeSlideData?.tripId;
+        if (!tripId) {
             toast('No active trip found — please add an expense first', 'error');
             return;
         }
@@ -167,15 +198,14 @@ export default function SettlementsPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    tripId: activeTripId, toUserId: confirmSettle.to,
+                    tripId, toUserId: confirmSettle.to,
                     amount: confirmSettle.amount, method: 'cash',
                 }),
             });
             if (res.ok) {
                 toast('Settlement recorded ✅', 'success');
                 setConfirmSettle(null);
-                setLoading(true);
-                await fetchSettlements();
+                mutate();
             } else {
                 const err = await res.json().catch(() => ({}));
                 toast(err.error || 'Failed to record settlement', 'error');
@@ -187,7 +217,7 @@ export default function SettlementsPage() {
         }
     };
 
-    if (loading) return <SettlementSkeleton />;
+    if (isLoading) return <SettlementSkeleton />;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -244,39 +274,226 @@ export default function SettlementsPage() {
                 </div>
             </motion.div>
 
-            {/* ═══ TRANSFER GRAPH TOGGLE ═══ */}
-            {graphMembers.length > 0 && (
-                <>
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+            {/* ═══ GROUP CAROUSEL ═══ */}
+            {slides.length > 1 && (
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}>
+                    {/* Carousel Navigation Header */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        marginBottom: 'var(--space-3)',
+                    }}>
                         <button
-                            onClick={() => setShowGraph(!showGraph)}
+                            onClick={() => goToSlide(activeSlide - 1)}
+                            disabled={activeSlide === 0}
                             style={{
-                                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                padding: '10px 16px', borderRadius: 'var(--radius-xl)',
-                                ...glass, cursor: 'pointer',
-                                color: showGraph ? 'var(--accent-400)' : 'var(--fg-secondary)',
-                                fontSize: 'var(--text-sm)', fontWeight: 600, transition: 'all 0.2s',
+                                background: 'none', border: 'none', padding: 6,
+                                color: activeSlide === 0 ? 'var(--fg-muted)' : 'var(--fg-secondary)',
+                                cursor: activeSlide === 0 ? 'default' : 'pointer',
+                                opacity: activeSlide === 0 ? 0.3 : 1,
+                                transition: 'all 0.2s',
                             }}
                         >
-                            <GitBranch size={15} /> {showGraph ? 'Hide' : 'Show'} Transfer Graph
+                            <ChevronLeft size={18} />
                         </button>
-                    </motion.div>
-                    <AnimatePresence>
-                        {showGraph && (
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: '18px' }}>{activeSlideData?.emoji}</span>
+                            <span style={{
+                                fontSize: 'var(--text-sm)', fontWeight: 700,
+                                color: 'var(--fg-primary)',
+                            }}>
+                                {activeSlideData?.label}
+                            </span>
+                            <span style={{
+                                fontSize: 'var(--text-xs)', color: 'var(--fg-muted)', fontWeight: 500,
+                            }}>
+                                {activeSlide + 1}/{slideCount}
+                            </span>
+                        </div>
+
+                        <button
+                            onClick={() => goToSlide(activeSlide + 1)}
+                            disabled={activeSlide === slideCount - 1}
+                            style={{
+                                background: 'none', border: 'none', padding: 6,
+                                color: activeSlide === slideCount - 1 ? 'var(--fg-muted)' : 'var(--fg-secondary)',
+                                cursor: activeSlide === slideCount - 1 ? 'default' : 'pointer',
+                                opacity: activeSlide === slideCount - 1 ? 0.3 : 1,
+                                transition: 'all 0.2s',
+                            }}
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
+
+                    {/* Dot Indicators */}
+                    <div style={{
+                        display: 'flex', justifyContent: 'center', gap: 6,
+                        marginBottom: 'var(--space-3)',
+                    }}>
+                        {slides.map((slide, idx) => (
+                            <button
+                                key={slide.groupId || 'all'}
+                                onClick={() => goToSlide(idx)}
+                                style={{
+                                    width: idx === activeSlide ? 20 : 8,
+                                    height: 8,
+                                    borderRadius: 100,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    background: idx === activeSlide
+                                        ? 'linear-gradient(135deg, var(--accent-400), var(--accent-600))'
+                                        : 'var(--fg-muted)',
+                                    opacity: idx === activeSlide ? 1 : 0.3,
+                                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                                }}
+                                aria-label={`Go to ${slide.label}`}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Swipeable Graph Card */}
+                    <div style={{ overflow: 'hidden', borderRadius: 'var(--radius-2xl)' }}>
+                        <AnimatePresence mode="wait" initial={false}>
                             <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.3 }}
-                                style={{ overflow: 'hidden' }}
+                                key={activeSlide}
+                                initial={{ opacity: 0, x: 40 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -40 }}
+                                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                drag="x"
+                                dragConstraints={{ left: 0, right: 0 }}
+                                dragElastic={0.15}
+                                onDragEnd={handleDragEnd}
+                                style={{ cursor: 'grab', touchAction: 'pan-y' }}
                             >
-                                <div style={{ ...glass, borderRadius: 'var(--radius-2xl)', padding: 'var(--space-4)' }}>
-                                    <SettlementGraph members={graphMembers} settlements={graphSettlements} memberImages={graphMemberImages} />
-                                </div>
+                                {activeSlide === 0 ? (
+                                    /* Global Summary Card */
+                                    <div style={{
+                                        ...glass, borderRadius: 'var(--radius-2xl)', padding: 'var(--space-4)',
+                                        background: 'linear-gradient(135deg, rgba(var(--accent-500-rgb), 0.06), var(--bg-glass))',
+                                    }}>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', gap: 8,
+                                            marginBottom: 'var(--space-3)',
+                                            fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)', fontWeight: 600,
+                                            textTransform: 'uppercase', letterSpacing: '0.05em',
+                                        }}>
+                                            <GitBranch size={12} />
+                                            Global Pairwise Summary
+                                        </div>
+                                        {activePending.length > 0 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                                {activePending.map((s, i) => {
+                                                    const isSender = s.from.id === currentUserId;
+                                                    const isReceiver = s.to.id === currentUserId;
+                                                    return (
+                                                        <div key={i} style={{
+                                                            display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
+                                                            padding: '10px 12px', borderRadius: 'var(--radius-lg)',
+                                                            background: isSender
+                                                                ? 'rgba(239, 68, 68, 0.04)'
+                                                                : isReceiver
+                                                                    ? 'rgba(16, 185, 129, 0.04)'
+                                                                    : 'rgba(var(--accent-500-rgb), 0.03)',
+                                                            border: `1px solid ${isSender ? 'rgba(239, 68, 68, 0.08)' : isReceiver ? 'rgba(16, 185, 129, 0.08)' : 'var(--border-glass)'}`,
+                                                        }}>
+                                                            <Avatar name={s.from.name} image={s.from.image} size="xs" />
+                                                            <ArrowRightLeft size={11} style={{ color: 'var(--fg-muted)', flexShrink: 0 }} />
+                                                            <Avatar name={s.to.name} image={s.to.image} size="xs" />
+                                                            <div style={{ flex: 1 }}>
+                                                                <span style={{
+                                                                    fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                                    color: isSender ? 'var(--color-error)' : isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
+                                                                }}>
+                                                                    {isSender ? 'You' : s.from.name}
+                                                                </span>
+                                                                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-muted)', margin: '0 4px' }}>→</span>
+                                                                <span style={{
+                                                                    fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                                    color: isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
+                                                                }}>
+                                                                    {isReceiver ? 'You' : s.to.name}
+                                                                </span>
+                                                            </div>
+                                                            <span style={{
+                                                                fontSize: 'var(--text-sm)', fontWeight: 800,
+                                                                color: isSender ? 'var(--color-error)' : isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
+                                                            }}>
+                                                                {formatCurrency(s.amount)}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: 'var(--space-6) 0', color: 'var(--fg-tertiary)', fontSize: 'var(--text-sm)' }}>
+                                                All settled up! 🎉
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    /* Per-Group Graph Card */
+                                    <div style={{
+                                        ...glass, borderRadius: 'var(--radius-2xl)', padding: 'var(--space-3)',
+                                        background: 'linear-gradient(135deg, rgba(var(--accent-500-rgb), 0.04), var(--bg-glass))',
+                                    }}>
+                                        {graphSettlements.length > 0 ? (
+                                            <>
+                                                <div style={{
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                    marginBottom: 'var(--space-2)',
+                                                    padding: '0 var(--space-1)',
+                                                }}>
+                                                    <span style={{
+                                                        fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)',
+                                                        fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                                        display: 'flex', alignItems: 'center', gap: 6,
+                                                    }}>
+                                                        <GitBranch size={12} />
+                                                        Simplified Transfers
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: '10px', color: 'var(--fg-muted)',
+                                                        background: 'rgba(var(--accent-500-rgb), 0.08)',
+                                                        padding: '2px 8px', borderRadius: 100, fontWeight: 600,
+                                                    }}>
+                                                        {graphSettlements.length} transfer{graphSettlements.length !== 1 ? 's' : ''}
+                                                    </span>
+                                                </div>
+                                                <SettlementGraph
+                                                    members={graphMembers}
+                                                    settlements={graphSettlements}
+                                                    memberImages={graphMemberImages}
+                                                    compact
+                                                    instanceId={activeSlideData?.groupId || 'group'}
+                                                />
+                                            </>
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: 'var(--space-8) 0' }}>
+                                                <div style={{
+                                                    width: 48, height: 48, borderRadius: 'var(--radius-2xl)',
+                                                    background: 'rgba(16, 185, 129, 0.08)',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    margin: '0 auto var(--space-3)', color: '#10b981',
+                                                }}>
+                                                    <Check size={20} />
+                                                </div>
+                                                <div style={{ fontWeight: 600, color: 'var(--fg-primary)', marginBottom: 4, fontSize: 'var(--text-sm)' }}>
+                                                    All settled up! 🎉
+                                                </div>
+                                                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)' }}>
+                                                    No pending transfers in this group.
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </motion.div>
-                        )}
-                    </AnimatePresence>
-                </>
+                        </AnimatePresence>
+                    </div>
+                </motion.div>
             )}
 
             {/* ═══ TABS — Glassmorphic Segmented Control ═══ */}
@@ -299,7 +516,7 @@ export default function SettlementsPage() {
                             transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                         }}
                     >
-                        {t === 'pending' ? `Pending (${pendingSettlements.length})` : `Settled (${settledSettlements.length})`}
+                        {t === 'pending' ? `Pending (${activePending.length})` : `Settled (${activeSettled.length})`}
                     </button>
                 ))}
             </div>
@@ -332,6 +549,7 @@ export default function SettlementsPage() {
                     const isSender = settlement.from.id === currentUserId;
                     const isReceiver = settlement.to.id === currentUserId;
                     const isSettled = settlement.status === 'settled';
+                    const tripId = settlement.tripId || activeSlideData?.tripId || '';
 
                     return (
                         <motion.div
@@ -360,7 +578,7 @@ export default function SettlementsPage() {
                                 }}
                             >
                                 {/* Transfer direction — centered row */}
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', marginBottom: (!isSettled || isSettled) ? 'var(--space-3)' : 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
                                     <Avatar name={settlement.from.name} image={settlement.from.image} size="sm" />
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)' }}>
                                         <span style={{
@@ -390,7 +608,7 @@ export default function SettlementsPage() {
                                     </span>
                                 </div>
 
-                                {/* Actions — centered via text-align since buttons are inline-flex */}
+                                {/* Actions */}
                                 {!isSettled && (
                                     <div style={{ textAlign: 'center', width: '100%' }}>
                                         {isSender && (
@@ -400,14 +618,13 @@ export default function SettlementsPage() {
                                                     boxShadow: '0 4px 16px rgba(76,175,80,0.25)',
                                                 }}
                                                 onClick={async () => {
-                                                    if (!activeTripId) { toast('No active trip', 'error'); return; }
+                                                    if (!tripId) { toast('No active trip', 'error'); return; }
                                                     try {
-                                                        // Create settlement record first to get a real DB ID
                                                         const res = await fetch('/api/settlements', {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },
                                                             body: JSON.stringify({
-                                                                tripId: activeTripId,
+                                                                tripId,
                                                                 toUserId: settlement.to.id,
                                                                 amount: settlement.amount,
                                                                 method: 'upi',
@@ -465,7 +682,7 @@ export default function SettlementsPage() {
                                         )}
                                         {(isSender || isReceiver) && (
                                             <Button size="sm" variant="ghost" iconOnly
-                                                onClick={() => setConfirmSettle({ from: settlement.from.id, to: settlement.to.id, amount: settlement.amount })}
+                                                onClick={() => setConfirmSettle({ from: settlement.from.id, to: settlement.to.id, amount: settlement.amount, tripId })}
                                                 style={{ borderRadius: 'var(--radius-lg)' }}
                                             >
                                                 <Check size={15} />
@@ -491,16 +708,16 @@ export default function SettlementsPage() {
             </div>
 
             {/* ═══ EXPORT ACTIONS ═══ */}
-            {pendingSettlements.length > 0 && (
+            {activePending.length > 0 && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
                     <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                         <button
                             onClick={() => {
                                 const data = {
-                                    groupName: 'Group', tripName: 'Trip',
+                                    groupName: activeSlideData?.label || 'Group', tripName: 'Trip',
                                     members: graphMembers.map(m => ({ name: m })),
                                     transactions: [], settlements: graphSettlements,
-                                    totalSpent: pendingSettlements.reduce((sum, s) => sum + s.amount, 0),
+                                    totalSpent: activePending.reduce((sum, s) => sum + s.amount, 0),
                                     exportDate: new Date(),
                                 };
                                 exportAsText(data);
@@ -518,10 +735,10 @@ export default function SettlementsPage() {
                         <button
                             onClick={() => {
                                 const data = {
-                                    groupName: 'Group', tripName: 'Trip',
+                                    groupName: activeSlideData?.label || 'Group', tripName: 'Trip',
                                     members: graphMembers.map(m => ({ name: m })),
                                     transactions: [], settlements: graphSettlements,
-                                    totalSpent: pendingSettlements.reduce((sum, s) => sum + s.amount, 0),
+                                    totalSpent: activePending.reduce((sum, s) => sum + s.amount, 0),
                                     exportDate: new Date(),
                                 };
                                 shareSettlement(data);
@@ -550,14 +767,14 @@ export default function SettlementsPage() {
                 {confirmSettle && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)' }}>
-                            <Avatar name={memberNames[confirmSettle.from] || 'User'} image={memberImages[confirmSettle.from]} size="md" />
+                            <Avatar name={nameMap[confirmSettle.from] || 'User'} image={imageMap[confirmSettle.from]} size="md" />
                             <ArrowRightLeft size={20} style={{ color: 'var(--fg-muted)' }} />
-                            <Avatar name={memberNames[confirmSettle.to] || 'User'} image={memberImages[confirmSettle.to]} size="md" />
+                            <Avatar name={nameMap[confirmSettle.to] || 'User'} image={imageMap[confirmSettle.to]} size="md" />
                         </div>
                         <p style={{ color: 'var(--fg-secondary)', fontSize: 'var(--text-sm)' }}>
                             Mark <strong>{formatCurrency(confirmSettle.amount)}</strong> from{' '}
-                            <strong>{memberNames[confirmSettle.from] || 'User'}</strong> to{' '}
-                            <strong>{memberNames[confirmSettle.to] || 'User'}</strong> as settled?
+                            <strong>{nameMap[confirmSettle.from] || 'User'}</strong> to{' '}
+                            <strong>{nameMap[confirmSettle.to] || 'User'}</strong> as settled?
                         </p>
                         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                             <Button variant="outline" fullWidth onClick={() => setConfirmSettle(null)}>Cancel</Button>
@@ -584,8 +801,7 @@ export default function SettlementsPage() {
                 payeeUpiId={upiModal.payeeUpiId}
                 onPaymentComplete={() => {
                     setUpiModal({ open: false, amount: 0, payeeName: '' });
-                    setLoading(true);
-                    fetchSettlements();
+                    mutate();
                 }}
             />
         </div>
