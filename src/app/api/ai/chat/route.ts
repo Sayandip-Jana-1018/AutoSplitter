@@ -149,10 +149,30 @@ export async function POST(req: Request) {
                 balanceStr = 'User is settled up in this group';
             }
 
+            // Per-group category breakdown
+            const groupCategories = new Map<string, number>();
+            for (const txn of groupTxns) {
+                const cat = CATEGORY_LABELS[txn.category] || txn.category;
+                groupCategories.set(cat, (groupCategories.get(cat) || 0) + txn.amount);
+            }
+            const groupCatStr = Array.from(groupCategories.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([c, a]) => `${c}: ₹${(a / 100).toFixed(2)}`)
+                .join(', ');
+
+            // Top 3 expenses in this group
+            const topExpenses = groupTxns
+                .sort((a, b) => b.amount - a.amount)
+                .slice(0, 3)
+                .map(t => `${t.payer.name} paid ₹${(t.amount / 100).toFixed(2)} for "${t.title}" (${t.splitType} split among ${t.splits.length} people)`)
+                .join('; ');
+
             groupSummaries.push(
                 `📌 Group: "${group.name}" (${group.members.length} members: ${memberList})\n` +
                 `   Total spent: ₹${(totalGroupSpent / 100).toFixed(2)} | User paid: ₹${(userPaid / 100).toFixed(2)}\n` +
-                `   ${balanceStr}`
+                `   ${balanceStr}\n` +
+                `   Categories: ${groupCatStr || 'None'}\n` +
+                `   Top expenses: ${topExpenses || 'None'}`
             );
         }
 

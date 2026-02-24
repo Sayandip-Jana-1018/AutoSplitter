@@ -177,6 +177,22 @@ export async function POST(req: Request) {
                 amount: perPerson + (i === 0 ? remainder : 0),
             }));
         } else if (splits) {
+            // Validate custom splits sum to total
+            const splitTotal = splits.reduce((sum, s) => sum + s.amount, 0);
+            if (splitTotal !== amount) {
+                return NextResponse.json(
+                    { error: `Split amounts (${splitTotal}) must equal the transaction total (${amount})` },
+                    { status: 400 }
+                );
+            }
+            // Validate all split user IDs are group members
+            const invalidUsers = splits.filter(s => !allMemberIds.includes(s.userId));
+            if (invalidUsers.length > 0) {
+                return NextResponse.json(
+                    { error: 'One or more split users are not members of this group' },
+                    { status: 400 }
+                );
+            }
             splitData = splits;
         }
 

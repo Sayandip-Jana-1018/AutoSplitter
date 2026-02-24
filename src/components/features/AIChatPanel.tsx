@@ -388,28 +388,28 @@ export default function AIChatPanel() {
                                                 whileTap={{ scale: 0.96 }}
                                                 whileHover={{ scale: 1.02 }}
                                                 style={{
-                                                    padding: '14px 12px',
+                                                    padding: '16px 12px 12px',
                                                     borderRadius: 14,
                                                     background: 'var(--bg-secondary)',
                                                     border: '1px solid var(--border-subtle)',
                                                     cursor: 'pointer',
                                                     display: 'flex',
+                                                    flexDirection: 'column',
                                                     alignItems: 'center',
-                                                    gap: 10,
-                                                    textAlign: 'left',
+                                                    gap: 8,
+                                                    textAlign: 'center',
                                                     transition: 'all 0.2s ease',
                                                 }}
                                             >
                                                 <div style={{
-                                                    width: 32,
-                                                    height: 32,
-                                                    borderRadius: 10,
+                                                    width: 36,
+                                                    height: 36,
+                                                    borderRadius: 12,
                                                     background: action.gradient,
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     color: '#fff',
-                                                    flexShrink: 0,
                                                 }}>
                                                     {action.icon}
                                                 </div>

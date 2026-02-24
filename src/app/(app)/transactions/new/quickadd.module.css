@@ -8,7 +8,7 @@
     flex-direction: column;
     min-height: calc(100vh - 120px);
     min-height: calc(100dvh - 120px);
-    gap: var(--space-3);
+    gap: var(--space-4);
 }
 
 /* ── Amount Display ── */
@@ -62,6 +62,8 @@
     display: flex;
     gap: var(--space-2);
     padding: 0 var(--space-2);
+    justify-content: center;
+    flex-wrap: wrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -145,7 +147,7 @@
 /* ── Submit Button ── */
 .submitBtn {
     margin: var(--space-2);
-    margin-bottom: 90px;
+    margin-bottom: 16px;
 }
 
 /* ── Category Picker Sheet ── */

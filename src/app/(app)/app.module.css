@@ -10,6 +10,7 @@
     flex-direction: column;
     background: var(--bg-primary);
     position: relative;
+    overflow-x: hidden;
 }
 
 /* Ambient mesh gradient behind everything — dark */
@@ -349,7 +350,7 @@
     position: sticky;
     top: 0;
     z-index: var(--z-sticky);
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-3) max(var(--space-4), env(safe-area-inset-right, 0px)) var(--space-3) max(var(--space-4), env(safe-area-inset-left, 0px));
     background: var(--bg-elevated, #ffffff);
     border-bottom: 1px solid var(--border-subtle);
     display: flex;
@@ -420,6 +421,8 @@
 
 .pageContent {
     padding: var(--space-4);
+    padding-left: max(var(--space-4), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));
     padding-bottom: 140px;
     max-width: 600px;
     width: 100%;

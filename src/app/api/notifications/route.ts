@@ -103,8 +103,23 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Cannot send notification to yourself' }, { status: 400 });
         }
 
+        // Security: Verify sender and recipient share at least one group
+        const sharedGroup = await prisma.group.findFirst({
+            where: {
+                deletedAt: null,
+                AND: [
+                    { OR: [{ ownerId: sender.id }, { members: { some: { userId: sender.id } } }] },
+                    { OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
+                ],
+            },
+            select: { id: true },
+        });
+        if (!sharedGroup) {
+            return NextResponse.json({ error: 'You can only send notifications to users in your groups' }, { status: 403 });
+        }
+
         const notification = await prisma.notification.create({
-            data: { user: { connect: { id: userId } }, type, title, body: notifBody, link },
+            data: { user: { connect: { id: userId } }, actor: { connect: { id: sender.id } }, type, title, body: notifBody, link },
         });
 
         return NextResponse.json(notification, { status: 201 });

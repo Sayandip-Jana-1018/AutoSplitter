@@ -587,27 +587,29 @@ export default function SettlementsPage() {
                                     e.currentTarget.style.boxShadow = '';
                                 }}
                             >
-                                {/* Transfer direction — centered row */}
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
-                                    <Avatar name={settlement.from.name} image={settlement.from.image} size="sm" />
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)' }}>
-                                        <span style={{
-                                            fontWeight: 700,
-                                            color: isSender ? 'var(--color-error)' : 'var(--fg-primary)',
-                                        }}>
-                                            {isSender ? 'You' : settlement.from.name}
-                                        </span>
-                                        <ArrowRightLeft size={13} style={{ color: 'var(--fg-muted)' }} />
-                                        <span style={{
-                                            fontWeight: 700,
-                                            color: isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
-                                        }}>
-                                            {isReceiver ? 'You' : settlement.to.name}
-                                        </span>
+                                {/* Transfer direction — centered vertical layout */}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 'var(--space-3)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                                        <Avatar name={settlement.from.name} image={settlement.from.image} size="sm" />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)' }}>
+                                            <span style={{
+                                                fontWeight: 700,
+                                                color: isSender ? 'var(--color-error)' : 'var(--fg-primary)',
+                                            }}>
+                                                {isSender ? 'You' : settlement.from.name}
+                                            </span>
+                                            <ArrowRightLeft size={13} style={{ color: 'var(--fg-muted)' }} />
+                                            <span style={{
+                                                fontWeight: 700,
+                                                color: isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
+                                            }}>
+                                                {isReceiver ? 'You' : settlement.to.name}
+                                            </span>
+                                        </div>
+                                        <Avatar name={settlement.to.name} image={settlement.to.image} size="sm" />
                                     </div>
-                                    <div style={{ fontSize: 10, color: 'red' }}>tripId: {settlement.tripId || 'NONE'}</div>
                                     <span style={{
-                                        fontSize: 'var(--text-lg)', fontWeight: 800,
+                                        fontSize: 'var(--text-xl)', fontWeight: 800,
                                         color: isSender
                                             ? 'var(--color-error)'
                                             : isReceiver
@@ -620,7 +622,7 @@ export default function SettlementsPage() {
 
                                 {/* Actions */}
                                 {!isSettled && (
-                                    <div style={{ textAlign: 'center', width: '100%' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', paddingTop: 'var(--space-4)' }}>
                                         {isSender && (
                                             <Button size="sm" leftIcon={<CreditCard size={13} />}
                                                 style={{

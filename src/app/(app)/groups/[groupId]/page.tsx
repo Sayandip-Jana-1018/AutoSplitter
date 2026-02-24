@@ -20,7 +20,6 @@ import {
     Trash2,
     UserPlus,
     Send,
-    CreditCard,
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Button from '@/components/ui/Button';
@@ -278,15 +277,23 @@ export default function GroupDetailPage() {
                         <ArrowLeft size={18} />
                     </button>
                     <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                        <Button size="sm" variant="ghost" iconOnly onClick={() => setShowInvite(true)}
-                            style={{ color: 'var(--fg-secondary)' }}>
-                            <Share2 size={18} />
-                        </Button>
+                        <button onClick={() => setShowInvite(true)}
+                            style={{
+                                width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--border-default)',
+                                background: 'var(--bg-elevated)', cursor: 'pointer', color: '#6b7280',
+                            }}>
+                            <Share2 size={17} />
+                        </button>
                         {group.currentUserId === group.ownerId && (
-                            <Button size="sm" variant="ghost" iconOnly onClick={() => setShowDeleteConfirm(true)}
-                                style={{ color: 'var(--color-error, #ef4444)' }}>
-                                <Trash2 size={18} />
-                            </Button>
+                            <button onClick={() => setShowDeleteConfirm(true)}
+                                style={{
+                                    width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    borderRadius: 'var(--radius-lg)', border: '1.5px solid var(--border-default)',
+                                    background: 'var(--bg-elevated)', cursor: 'pointer', color: '#ef4444',
+                                }}>
+                                <Trash2 size={17} />
+                            </button>
                         )}
                     </div>
                 </div>
@@ -298,7 +305,7 @@ export default function GroupDetailPage() {
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             style={{
                                 position: 'fixed', inset: 0, zIndex: 999,
-                                background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                                background: 'transparent', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 padding: 'var(--space-4)',
                             }}

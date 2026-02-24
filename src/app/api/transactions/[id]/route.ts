@@ -30,6 +30,7 @@ export async function GET(
         const transaction = await prisma.transaction.findFirst({
             where: {
                 id,
+                deletedAt: null,
                 trip: {
                     group: {
                         OR: [

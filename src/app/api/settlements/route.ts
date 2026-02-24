@@ -221,9 +221,11 @@ export async function POST(req: Request) {
         if (!memberIds.includes(user.id)) {
             return NextResponse.json({ error: 'You are not a member of this group' }, { status: 403 });
         }
+        if (!memberIds.includes(parsed.data.toUserId)) {
+            return NextResponse.json({ error: 'Recipient is not a member of this group' }, { status: 403 });
+        }
 
         // ── Security: Duplicate check (same pair, same trip, within 60s) ──
-        // Only block if a *completed* settlement exists — pending/initiated UPI settlements may need retry
         const sixtySecondsAgo = new Date(Date.now() - 60_000);
         const duplicate = await prisma.settlement.findFirst({
             where: {
@@ -231,7 +233,7 @@ export async function POST(req: Request) {
                 fromId: user.id,
                 toId: parsed.data.toUserId,
                 amount: parsed.data.amount,
-                status: 'completed',
+                status: { in: ['pending', 'initiated', 'completed'] },
                 createdAt: { gte: sixtySecondsAgo },
                 deletedAt: null,
             },

@@ -173,28 +173,29 @@ function QuickAddContent() {
     };
 
     const toggleMember = useCallback((memberId: string) => {
-        // If in custom mode, switching members resets to equal mode because we lose the custom data context
-        if (splitType === 'custom') {
-            if (window.confirm("Changing members will potentialy reset the custom items split. Continue to 'Equal Split'?")) {
-                setSplitType('equal');
-                setCustomSplits([]);
-            } else {
-                return;
-            }
+        // Compute new member set from current value (not inside updater to avoid nested setState)
+        const next = new Set(selectedMembers);
+        if (next.has(memberId)) {
+            if (next.size <= 1) return;
+            next.delete(memberId);
+        } else {
+            next.add(memberId);
         }
 
-        setSelectedMembers(prev => {
-            const next = new Set(prev);
-            if (next.has(memberId)) {
-                // Don't allow deselecting the payer or going below 1 selected
-                if (memberId === payerId || next.size <= 1) return prev;
-                next.delete(memberId);
-            } else {
-                next.add(memberId);
-            }
-            return next;
-        });
-    }, [payerId, splitType]);
+        // Set both states at the same level so React batches them together
+        setSelectedMembers(next);
+
+        if (splitType === 'custom') {
+            const totalPaise = toPaise(numericAmount);
+            const memberArr = Array.from(next);
+            const perPerson = Math.floor(totalPaise / memberArr.length);
+            const remainder = totalPaise - perPerson * memberArr.length;
+            setCustomSplits(memberArr.map((id, i) => ({
+                userId: id,
+                amount: perPerson + (i === memberArr.length - 1 ? remainder : 0),
+            })));
+        }
+    }, [selectedMembers, splitType, numericAmount]);
 
     const handleNumPad = useCallback((key: string) => {
         if (key === 'del') {
@@ -228,6 +229,18 @@ function QuickAddContent() {
         if (!selectedGroupId) {
             toast('Please select a group', 'error');
             return;
+        }
+        // Validate custom splits sum to total
+        if (splitType === 'custom') {
+            const totalPaise = toPaise(numericAmount);
+            const selArr = Array.from(selectedMembers);
+            const allocated = customSplits
+                .filter(s => selArr.includes(s.userId))
+                .reduce((sum, s) => sum + s.amount, 0);
+            if (allocated !== totalPaise) {
+                toast(`Split amounts (${formatCurrency(allocated)}) don't match total (${formatCurrency(totalPaise)})`, 'error');
+                return;
+            }
         }
 
         // If no trip exists yet, auto-create one
@@ -384,7 +397,8 @@ function QuickAddContent() {
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 'var(--space-4)', // Increased from space-2 for better breathing room
+                    alignItems: 'center',
+                    gap: 'var(--space-4)',
                     marginTop: 'var(--space-2)',
                     marginBottom: 'var(--space-2)',
                 }}>
@@ -427,7 +441,7 @@ function QuickAddContent() {
                                         background: isSelected
                                             ? 'rgba(var(--accent-500-rgb), 0.08)' // Slightly more visible background
                                             : 'var(--bg-surface)', // Explicit surface color
-                                        cursor: isPayer ? 'default' : 'pointer',
+                                        cursor: 'pointer',
                                         opacity: isSelected ? 1 : 0.6,
                                         transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                                         boxShadow: isSelected ? '0 2px 8px rgba(var(--accent-500-rgb), 0.15)' : 'none', // Subtle lift for selected
@@ -459,14 +473,14 @@ function QuickAddContent() {
                                     {isPayer && (
                                         <span style={{
                                             fontSize: 9,
-                                            background: 'var(--accent-500)',
+                                            background: isSelected ? 'var(--accent-500)' : 'var(--color-error, #ef4444)',
                                             color: '#fff',
                                             padding: '2px 6px',
                                             borderRadius: 'var(--radius-full)',
                                             fontWeight: 700,
                                             letterSpacing: '0.02em',
                                             marginLeft: 2,
-                                        }}>PAID</span>
+                                        }}>{isSelected ? 'PAID' : 'PAID ONLY'}</span>
                                     )}
                                 </motion.button>
                             );
@@ -475,37 +489,197 @@ function QuickAddContent() {
                 </div>
             )}
 
-            {/* ── Split Info ── */}
+            {/* ── Split Mode Toggle + Split Info ── */}
             {numericAmount > 0 && selectedCount > 0 && (
                 <motion.div
-                    className={styles.splitInfo}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    style={{ marginTop: 'var(--space-2)' }} // Add slight adjustment
+                    style={{ marginTop: 'var(--space-2)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', alignItems: 'center' }}
                 >
-                    {splitType === 'custom' ? (
-                        <>
-                            <span style={{ color: 'var(--accent-500)', fontWeight: 600 }}>Item-based split</span>
-                            {' '} · {selectedCount} people
-                            <button
-                                onClick={() => {
-                                    setSplitType('equal');
-                                    setCustomSplits([]);
-                                }}
+                    {/* Equal / Custom toggle */}
+                    <div style={{
+                        display: 'flex',
+                        borderRadius: 'var(--radius-full)',
+                        border: '1px solid var(--border-default)',
+                        overflow: 'hidden',
+                    }}>
+                        {(['equal', 'custom'] as const).map(mode => (
+                            <button key={mode} onClick={() => {
+                                if (mode === 'equal') { setSplitType('equal'); setCustomSplits([]); }
+                                else {
+                                    setSplitType('custom');
+                                    // Initialize custom splits with equal amounts for selected members
+                                    const selArr = Array.from(selectedMembers);
+                                    const totalPaise = toPaise(numericAmount);
+                                    const perPerson = Math.floor(totalPaise / selArr.length);
+                                    const remainder = totalPaise - perPerson * selArr.length;
+                                    setCustomSplits(selArr.map((id, i) => ({
+                                        userId: id,
+                                        amount: perPerson + (i === selArr.length - 1 ? remainder : 0),
+                                    })));
+                                }
+                            }}
                                 style={{
-                                    marginLeft: 8, fontSize: 'var(--text-xs)',
-                                    textDecoration: 'underline', color: 'var(--fg-tertiary)',
-                                    background: 'none', border: 'none', cursor: 'pointer'
+                                    padding: '6px 16px', fontSize: 'var(--text-xs)', fontWeight: 600,
+                                    border: 'none', cursor: 'pointer',
+                                    background: splitType === mode ? 'var(--accent-500)' : 'transparent',
+                                    color: splitType === mode ? '#fff' : 'var(--fg-secondary)',
+                                    transition: 'all 0.2s',
                                 }}
                             >
-                                Reset to Equal
+                                {mode === 'equal' ? '÷ Equal' : '✏️ Custom'}
                             </button>
-                        </>
-                    ) : (
-                        <>
+                        ))}
+                    </div>
+
+                    {splitType === 'equal' ? (
+                        <div className={styles.splitInfo}>
                             Split equally: <span className={styles.splitAmount}>{splitPerPerson}</span> / person
                             ({selectedCount} of {members.length} people)
-                        </>
+                        </div>
+                    ) : (
+                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10, padding: '0 4px' }}>
+                            {/* Per-person amount inputs */}
+                            {(() => {
+                                const selArr = Array.from(selectedMembers);
+                                const totalPaise = toPaise(numericAmount);
+
+                                return selArr.map((memberId, idx) => {
+                                    const member = members.find(m => m.id === memberId);
+                                    if (!member) return null;
+                                    const isLast = idx === selArr.length - 1;
+                                    const split = customSplits.find(s => s.userId === memberId);
+                                    const currentAmount = split?.amount || 0;
+
+                                    // For last person: auto-calculate remaining
+                                    const othersTotal = customSplits
+                                        .filter(s => s.userId !== memberId && selArr.includes(s.userId))
+                                        .reduce((sum, s) => sum + s.amount, 0);
+                                    const autoFillAmount = isLast ? Math.max(0, totalPaise - othersTotal) : currentAmount;
+
+                                    // If last person, auto-update their split
+                                    if (isLast && split && split.amount !== autoFillAmount) {
+                                        setTimeout(() => {
+                                            setCustomSplits(prev => prev.map(s =>
+                                                s.userId === memberId ? { ...s, amount: autoFillAmount } : s
+                                            ));
+                                        }, 0);
+                                    }
+
+                                    return (
+                                        <div key={memberId} style={{
+                                            display: 'flex', alignItems: 'center', gap: 12,
+                                            padding: '12px 16px',
+                                            background: isLast
+                                                ? 'linear-gradient(135deg, rgba(var(--accent-500-rgb), 0.06), rgba(var(--accent-500-rgb), 0.02))'
+                                                : 'var(--bg-surface)',
+                                            borderRadius: 16,
+                                            border: isLast
+                                                ? '1.5px solid rgba(var(--accent-500-rgb), 0.2)'
+                                                : '1px solid var(--border-subtle)',
+                                            transition: 'all 0.2s ease',
+                                        }}>
+                                            <Avatar name={member.name} image={member.image} size="sm" />
+                                            <span style={{
+                                                flex: 1, fontSize: 'var(--text-sm)', fontWeight: 600,
+                                                color: 'var(--fg-primary)',
+                                            }}>
+                                                {member.id === currentUser?.id ? 'You' : member.name.split(' ')[0]}
+                                                {isLast && (
+                                                    <span style={{
+                                                        fontSize: 10, color: 'var(--accent-500)',
+                                                        fontWeight: 500, marginLeft: 6,
+                                                        opacity: 0.8,
+                                                    }}>(remainder)</span>
+                                                )}
+                                            </span>
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center', gap: 2,
+                                                background: isLast ? 'rgba(var(--accent-500-rgb), 0.1)' : 'var(--bg-elevated)',
+                                                borderRadius: 12,
+                                                padding: '6px 4px 6px 10px',
+                                                border: `1px solid ${isLast ? 'var(--accent-500)' : 'var(--border-default)'}`,
+                                            }}>
+                                                <span style={{
+                                                    fontSize: 'var(--text-sm)',
+                                                    color: isLast ? 'var(--accent-500)' : 'var(--fg-tertiary)',
+                                                    fontWeight: 600,
+                                                }}>₹</span>
+                                                <input
+                                                    type="number"
+                                                    inputMode="decimal"
+                                                    value={isLast ? (autoFillAmount / 100).toFixed(2) : (currentAmount / 100) || ''}
+                                                    readOnly={isLast}
+                                                    onChange={e => {
+                                                        if (isLast) return;
+                                                        const val = Math.round(parseFloat(e.target.value || '0') * 100);
+                                                        setCustomSplits(prev => {
+                                                            const existing = prev.find(s => s.userId === memberId);
+                                                            if (existing) return prev.map(s => s.userId === memberId ? { ...s, amount: val } : s);
+                                                            return [...prev, { userId: memberId, amount: val }];
+                                                        });
+                                                    }}
+                                                    style={{
+                                                        width: 72, padding: '4px 6px',
+                                                        fontSize: 'var(--text-base)', fontWeight: 700,
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: isLast ? 'var(--accent-500)' : 'var(--fg-primary)',
+                                                        outline: 'none',
+                                                        textAlign: 'right',
+                                                    }}
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()}
+
+                            {/* Running total bar */}
+                            {(() => {
+                                const totalPaise = toPaise(numericAmount);
+                                const allocated = customSplits
+                                    .filter(s => Array.from(selectedMembers).includes(s.userId))
+                                    .reduce((sum, s) => sum + s.amount, 0);
+                                const pct = totalPaise > 0 ? Math.min((allocated / totalPaise) * 100, 100) : 0;
+                                const isExact = allocated === totalPaise;
+                                const isOver = allocated > totalPaise;
+
+                                return (
+                                    <div style={{ width: '100%', marginTop: 4 }}>
+                                        <div style={{
+                                            height: 6, borderRadius: 3,
+                                            background: 'var(--border-subtle)',
+                                            overflow: 'hidden',
+                                        }}>
+                                            <div style={{
+                                                height: '100%',
+                                                width: `${pct}%`,
+                                                borderRadius: 3,
+                                                background: isExact
+                                                    ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                                                    : isOver
+                                                        ? 'linear-gradient(90deg, #ef4444, #dc2626)'
+                                                        : 'linear-gradient(90deg, var(--accent-400), var(--accent-600))',
+                                                transition: 'width 0.3s, background 0.3s',
+                                            }} />
+                                        </div>
+                                        <div style={{
+                                            fontSize: 'var(--text-xs)', textAlign: 'center',
+                                            marginTop: 6,
+                                            color: isExact ? '#22c55e' : isOver ? '#ef4444' : 'var(--fg-tertiary)',
+                                            fontWeight: 700,
+                                            letterSpacing: '0.02em',
+                                        }}>
+                                            {formatCurrency(allocated)} of {formatCurrency(totalPaise)} allocated
+                                            {isExact && ' ✓'}
+                                            {isOver && ' ⚠ over!'}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
                     )}
                 </motion.div>
             )}
