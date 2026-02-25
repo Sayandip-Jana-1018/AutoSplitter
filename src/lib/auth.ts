@@ -52,6 +52,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     ],
     session: {
         strategy: 'jwt',
+        maxAge: 30 * 24 * 60 * 60, // 30 days — keep users logged in
+    },
+    trustHost: true, // Required for Vercel / reverse-proxy deployments
+    cookies: {
+        sessionToken: {
+            name: process.env.NODE_ENV === 'production'
+                ? '__Secure-authjs.session-token'
+                : 'authjs.session-token',
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 30 * 24 * 60 * 60, // 30 days
+                secure: process.env.NODE_ENV === 'production',
+            },
+        },
     },
     pages: {
         signIn: '/login',
