@@ -7,6 +7,22 @@ const withPWA = withPWAInit({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
   disable: process.env.NODE_ENV === 'development',
+  extendDefaultRuntimeCaching: true,
+  workboxOptions: {
+    navigateFallbackDenylist: [/^\/api\//],
+    runtimeCaching: [
+      {
+        // Never cache auth-related API calls
+        urlPattern: /\/api\/auth\/.*/i,
+        handler: 'NetworkOnly' as const,
+      },
+      {
+        // Always go to network for user session check
+        urlPattern: /\/api\/me/i,
+        handler: 'NetworkOnly' as const,
+      },
+    ],
+  },
 });
 
 const nextConfig: NextConfig = {

@@ -5,10 +5,11 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
 /**
- * Next.js Middleware — runs on every request.
+ * Next.js Proxy — runs on every matched request.
  * Handles:
- * 1. Global API rate limiting using Upstash Redis
- * 2. Request logging for debugging
+ * 1. Auth-based route protection & redirects
+ * 2. Global API rate limiting using Upstash Redis
+ * 3. Security headers
  */
 
 // Initialize Redis and Ratelimit
@@ -30,10 +31,53 @@ const SKIP_PATHS = [
     '/favicon',
 ];
 
+// Routes that require authentication
+const PROTECTED_ROUTES = [
+    '/dashboard',
+    '/groups',
+    '/contacts',
+    '/transactions',
+    '/settlements',
+    '/analytics',
+    '/settings',
+];
+
+// Routes that should redirect to dashboard if already authenticated
+const AUTH_ROUTES = ['/login', '/register'];
+
+/**
+ * Check if the user has a valid session token cookie.
+ * In production NextAuth uses __Secure- prefix; in dev it doesn't.
+ */
+function hasSessionToken(request: NextRequest): boolean {
+    return (
+        request.cookies.has('__Secure-authjs.session-token') ||
+        request.cookies.has('authjs.session-token')
+    );
+}
+
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Only apply to API routes
+    // ── Auth Route Protection ──
+    // Skip auth checks for static assets and API routes (API routes have their own auth)
+    if (!pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
+        const isAuthenticated = hasSessionToken(request);
+
+        // Redirect authenticated users away from login/register
+        if (isAuthenticated && AUTH_ROUTES.some((route) => pathname.startsWith(route))) {
+            return NextResponse.redirect(new URL('/dashboard', request.url));
+        }
+
+        // Redirect unauthenticated users away from protected routes
+        if (!isAuthenticated && PROTECTED_ROUTES.some((route) => pathname.startsWith(route))) {
+            const loginUrl = new URL('/login', request.url);
+            loginUrl.searchParams.set('callbackUrl', pathname);
+            return NextResponse.redirect(loginUrl);
+        }
+    }
+
+    // ── API Rate Limiting (only for /api routes) ──
     if (!pathname.startsWith('/api')) {
         return NextResponse.next();
     }
@@ -43,7 +87,6 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // ── API Logging ──
     // ── API Logging ──
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const method = request.method;
@@ -85,5 +128,13 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/api/:path*'],
+    matcher: [
+        /*
+         * Match all paths except:
+         * - _next/static (static files)
+         * - _next/image (image optimization)
+         * - favicon.ico, icons, manifest, sw.js (PWA assets)
+         */
+        '/((?!_next/static|_next/image|favicon\\.ico|icons|manifest\\.json|sw\\.js|workbox-.*\\.js).*)',
+    ],
 };

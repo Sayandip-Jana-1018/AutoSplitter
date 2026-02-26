@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { ToastProvider } from '@/components/ui/Toast';
+import AuthProvider from '@/components/providers/AuthProvider';
 
 export const metadata: Metadata = {
   title: 'SplitX ~ Smart Expense',
@@ -45,11 +46,13 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="dark" data-palette="amethyst-haze" suppressHydrationWarning>
       <body>
-        <ThemeProvider>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
