@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertCircle, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useHaptics } from '@/hooks/useHaptics';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const fetcher = (url: string) => fetch(url).then(r => r.ok ? r.json() : null);
 
@@ -29,8 +30,8 @@ export default function NotificationBanner() {
         return () => clearTimeout(timer);
     }, []);
 
-    const { data: userData } = useSWR('/api/me', fetcher);
-    const currentUserId = userData?.id || null;
+    const { user: currentUserData } = useCurrentUser();
+    const currentUserId = currentUserData?.id || null;
 
     const { data: settData, isLoading } = useSWR(currentUserId ? '/api/settlements' : null, fetcher);
 
