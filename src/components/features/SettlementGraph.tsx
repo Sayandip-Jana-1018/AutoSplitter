@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-
+import Image from 'next/image';
 import { formatCurrency, getAvatarColor } from '@/lib/utils';
 
 interface Settlement {
@@ -19,278 +19,468 @@ interface SettlementGraphProps {
     instanceId?: string;
 }
 
-function getNodePositions(count: number, cx: number, cy: number, radius: number) {
-    return Array.from({ length: count }, (_, i) => {
-        // Offset by -PI/2 to start at the top (12 o'clock)
-        const angle = (2 * Math.PI * i) / count - Math.PI / 2;
+/* ── Force simulation helpers ── */
+
+interface NodeState {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    fx: number | null; // fixed x (when dragging)
+    fy: number | null;
+    name: string;
+}
+
+function initNodes(members: string[], w: number, h: number): NodeState[] {
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = Math.min(cx, cy) * 0.55;
+    return members.map((name, i) => {
+        const angle = (2 * Math.PI * i) / members.length - Math.PI / 2;
         return {
-            x: cx + radius * Math.cos(angle),
-            y: cy + radius * Math.sin(angle),
-            angle, // Store angle for label positioning
+            x: cx + r * Math.cos(angle),
+            y: cy + r * Math.sin(angle),
+            vx: 0,
+            vy: 0,
+            fx: null,
+            fy: null,
+            name,
         };
     });
 }
 
-export default function SettlementGraph({ members, settlements, memberImages = {}, compact = false, instanceId = 'default' }: SettlementGraphProps) {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [size, setSize] = useState({ w: 320, h: compact ? 240 : 320 });
+function simulate(nodes: NodeState[], edges: { source: number; target: number }[], w: number, h: number) {
+    const cx = w / 2;
+    const cy = h / 2;
+    const REPULSION = 4000;
+    const SPRING_K = 0.015;
+    const IDEAL_LEN = Math.min(w, h) * 0.38;
+    const CENTER_PULL = 0.002;
+    const DAMPING = 0.75;
+    const PADDING = 50;
 
+    // Reset forces
+    for (const n of nodes) {
+        if (n.fx !== null) { n.x = n.fx; n.y = n.fy!; n.vx = 0; n.vy = 0; continue; }
+    }
+
+    // Repulsion between all pairs
+    for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].fx !== null) continue;
+        for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[j].x - nodes[i].x;
+            const dy = nodes[j].y - nodes[i].y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const force = REPULSION / (dist * dist);
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            if (nodes[i].fx === null) { nodes[i].vx -= fx; nodes[i].vy -= fy; }
+            if (nodes[j].fx === null) { nodes[j].vx += fx; nodes[j].vy += fy; }
+        }
+    }
+
+    // Spring attraction along edges
+    for (const e of edges) {
+        const a = nodes[e.source];
+        const b = nodes[e.target];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const displacement = dist - IDEAL_LEN;
+        const force = SPRING_K * displacement;
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        if (a.fx === null) { a.vx += fx; a.vy += fy; }
+        if (b.fx === null) { b.vx -= fx; b.vy -= fy; }
+    }
+
+    // Gentle pull toward center
+    for (const n of nodes) {
+        if (n.fx !== null) continue;
+        n.vx += (cx - n.x) * CENTER_PULL;
+        n.vy += (cy - n.y) * CENTER_PULL;
+    }
+
+    // Integrate + boundary clamp
+    for (const n of nodes) {
+        if (n.fx !== null) continue;
+        n.vx *= DAMPING;
+        n.vy *= DAMPING;
+        n.x += n.vx;
+        n.y += n.vy;
+        n.x = Math.max(PADDING, Math.min(w - PADDING, n.x));
+        n.y = Math.max(PADDING, Math.min(h - PADDING, n.y));
+    }
+}
+
+/* ── Component ── */
+
+export default function SettlementGraph({
+    members,
+    settlements,
+    memberImages = {},
+    compact = false,
+    instanceId = 'default',
+}: SettlementGraphProps) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [size, setSize] = useState({ w: 360, h: compact ? 280 : 360 });
+    const [nodes, setNodes] = useState<NodeState[]>([]);
+    const [dragIdx, setDragIdx] = useState<number | null>(null);
+    const nodesRef = useRef<NodeState[]>([]);
+    const animRef = useRef<number>(0);
+    const dragIdxRef = useRef<number | null>(null);
+    const iterRef = useRef(0);
+
+    // Edges as index pairs
+    const edges = useMemo(() =>
+        settlements.map(s => ({
+            source: members.indexOf(s.from),
+            target: members.indexOf(s.to),
+        })).filter(e => e.source !== -1 && e.target !== -1),
+        [settlements, members]);
+
+    // Stable key for member identity
+    const membersKey = useMemo(() => members.join(','), [members]);
+
+    // Resize
     useEffect(() => {
-        function updateSize() {
+        function onResize() {
             if (containerRef.current) {
                 const w = containerRef.current.offsetWidth;
-                setSize({ w, h: compact ? Math.min(w, 280) : Math.min(w, 420) });
+                setSize({ w, h: compact ? Math.min(w, 300) : Math.min(w, 400) });
             }
         }
-        updateSize();
-        window.addEventListener('resize', updateSize);
-        return () => window.removeEventListener('resize', updateSize);
+        onResize();
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
     }, [compact]);
 
-    const cx = size.w / 2;
-    const cy = size.h / 2;
-    // Give slightly more breathing room
-    const nodeOffset = compact ? 45 : 60;
-    const radius = Math.min(cx, cy) - nodeOffset;
-    const positions = getNodePositions(members.length, cx, cy, radius);
-    const markerId = `arrowHead-${instanceId}`;
+    // Init nodes when members or size change (derive, don't effect)
+    const initialNodes = useMemo(() => {
+        if (members.length === 0) return [];
+        return initNodes(members, size.w, size.h);
+    }, [members, size.w, size.h]);
+
+    // Sync ref and state from derived initial nodes
+    useEffect(() => {
+        if (initialNodes.length === 0) return;
+        nodesRef.current = initialNodes.map(n => ({ ...n }));
+        iterRef.current = 0;
+    }, [initialNodes]);
+
+    // Force simulation loop
+    useEffect(() => {
+        if (nodesRef.current.length === 0) return;
+
+        let running = true;
+        const maxIter = 300;
+
+        function step() {
+            if (!running) return;
+            simulate(nodesRef.current, edges, size.w, size.h);
+            iterRef.current++;
+            setNodes([...nodesRef.current]);
+            // Keep running if dragging or still settling
+            if (dragIdxRef.current !== null || iterRef.current < maxIter) {
+                animRef.current = requestAnimationFrame(step);
+            }
+        }
+        animRef.current = requestAnimationFrame(step);
+
+        return () => { running = false; cancelAnimationFrame(animRef.current); };
+    }, [membersKey, size.w, size.h, edges]);
+
+    // Drag handlers
+    const onDragStart = useCallback((idx: number) => {
+        dragIdxRef.current = idx;
+        setDragIdx(idx);
+        nodesRef.current[idx].fx = nodesRef.current[idx].x;
+        nodesRef.current[idx].fy = nodesRef.current[idx].y;
+        iterRef.current = 0; // restart sim
+        // Restart animation loop
+        cancelAnimationFrame(animRef.current);
+        const loop = () => {
+            simulate(nodesRef.current, edges, size.w, size.h);
+            setNodes([...nodesRef.current]);
+            if (dragIdxRef.current !== null) {
+                animRef.current = requestAnimationFrame(loop);
+            }
+        };
+        animRef.current = requestAnimationFrame(loop);
+    }, [edges, size]);
+
+    const onDrag = useCallback((idx: number, info: { point: { x: number; y: number } }) => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = info.point.x - rect.left;
+        const y = info.point.y - rect.top;
+        nodesRef.current[idx].fx = Math.max(40, Math.min(size.w - 40, x));
+        nodesRef.current[idx].fy = Math.max(40, Math.min(size.h - 40, y));
+        nodesRef.current[idx].x = nodesRef.current[idx].fx!;
+        nodesRef.current[idx].y = nodesRef.current[idx].fy!;
+    }, [size]);
+
+    const onDragEnd = useCallback((idx: number) => {
+        nodesRef.current[idx].fx = null;
+        nodesRef.current[idx].fy = null;
+        dragIdxRef.current = null;
+        setDragIdx(null);
+        iterRef.current = 0;
+        // Let simulation settle
+        const settle = () => {
+            simulate(nodesRef.current, edges, size.w, size.h);
+            iterRef.current++;
+            setNodes([...nodesRef.current]);
+            if (iterRef.current < 120) {
+                animRef.current = requestAnimationFrame(settle);
+            }
+        };
+        animRef.current = requestAnimationFrame(settle);
+    }, [edges, size]);
+
+    if (members.length === 0 || nodes.length === 0) {
+        return (
+            <div style={{
+                textAlign: 'center', padding: 'var(--space-8)',
+                color: 'var(--fg-tertiary)', fontSize: 'var(--text-sm)',
+            }}>
+                No transfers to display
+            </div>
+        );
+    }
+
+    const markerId = `arrow-${instanceId}`;
 
     return (
-        <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <div
+            ref={containerRef}
+            style={{
+                width: '100%',
+                height: size.h,
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 'var(--radius-xl)',
+                touchAction: 'none',
+            }}
+        >
+            {/* SVG layer for edges */}
             <svg
                 width={size.w}
                 height={size.h}
-                viewBox={`0 0 ${size.w} ${size.h}`}
-                style={{ overflow: 'visible' }}
+                style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
             >
                 <defs>
                     <marker
                         id={markerId}
-                        markerWidth="8"
-                        markerHeight="6"
-                        refX="7"
-                        refY="3"
+                        markerWidth="10"
+                        markerHeight="8"
+                        refX="9"
+                        refY="4"
                         orient="auto"
                     >
-                        <path d="M0,0 L8,3 L0,6 Z" fill="var(--accent-500)" opacity="0.8" />
+                        <path d="M0,0 L10,4 L0,8 Z" fill="var(--accent-500)" opacity="0.75" />
                     </marker>
-                    {/* Filter for amount bubble shadow to make it pop over lines */}
-                    <filter id={`shadow-${instanceId}`} x="-20%" y="-20%" width="140%" height="140%">
-                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(var(--accent-500-rgb), 0.15)" />
+                    <filter id={`glow-${instanceId}`}>
+                        <feGaussianBlur stdDeviation="2" result="blur" />
+                        <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
                     </filter>
                 </defs>
 
-                {/* Edges (animated curved transfers) */}
                 {settlements.map((s, i) => {
                     const fromIdx = members.indexOf(s.from);
                     const toIdx = members.indexOf(s.to);
                     if (fromIdx === -1 || toIdx === -1) return null;
+                    const a = nodes[fromIdx];
+                    const b = nodes[toIdx];
+                    if (!a || !b) return null;
 
-                    const from = positions[fromIdx];
-                    const to = positions[toIdx];
+                    const dx = b.x - a.x;
+                    const dy = b.y - a.y;
+                    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const nr = 28; // node radius offset
 
-                    // Calculate linear distance between nodes
-                    const dx = to.x - from.x;
-                    const dy = to.y - from.y;
-                    const len = Math.sqrt(dx * dx + dy * dy);
+                    const sx = a.x + (dx / len) * nr;
+                    const sy = a.y + (dy / len) * nr;
+                    const ex = b.x - (dx / len) * (nr + 6);
+                    const ey = b.y - (dy / len) * (nr + 6);
 
-                    // Radius of the avatar circle so line doesn't start inside the image
-                    const nodeRadius = 26;
-                    
-                    // Start & end points on the edge of the avatar circle
-                    const startX = from.x + (dx / len) * nodeRadius;
-                    const startY = from.y + (dy / len) * nodeRadius;
-                    const endX = to.x - (dx / len) * (nodeRadius + 6); // Extra offset for arrow head
-                    const endY = to.y - (dy / len) * (nodeRadius + 6);
+                    // Perpendicular offset for curve (outward bow)
+                    const mx = (sx + ex) / 2;
+                    const my = (sy + ey) / 2;
+                    // Normal perpendicular vector
+                    const nx = -(dy / len);
+                    const ny = (dx / len);
+                    const bow = 25 + (i * 8); // stagger each edge slightly
+                    const dir = i % 2 === 0 ? 1 : -1;
+                    const cpx = mx + nx * bow * dir;
+                    const cpy = my + ny * bow * dir;
 
-                    // Calculate a control point for a quadratic bezier curve
-                    // We want to bow outward slightly relative to the center of the graph
-                    const midX = (startX + endX) / 2;
-                    const midY = (startY + endY) / 2;
-
-                    // Vector from graph center to midpoint
-                    const vecCx = midX - cx;
-                    const vecCy = midY - cy;
-                    const vecCLen = Math.sqrt(vecCx * vecCx + vecCy * vecCy) || 1;
-
-                    // Push the curve outward. The closer to center, the harder we push it out.
-                    // Also use edge index `i` to stagger lines if there are multiple crossing the exact same path
-                    const curveIntensity = Math.max(30, radius * 0.4); 
-                    const staggerDir = i % 2 === 0 ? 1 : -1;
-                    
-                    // Control point (cp)
-                    const cpX = midX + (vecCx / vecCLen) * curveIntensity * staggerDir;
-                    const cpY = midY + (vecCy / vecCLen) * curveIntensity * staggerDir;
-
-                    const pathData = `M ${startX} ${startY} Q ${cpX} ${cpY} ${endX} ${endY}`;
-                    
-                    // Curve midpoint for placing the text bubble
-                    // Quadratic bezier midpoint: B(0.5) = 0.25*P0 + 0.5*P1 + 0.25*P2
-                    const textX = 0.25 * startX + 0.5 * cpX + 0.25 * endX;
-                    const textY = 0.25 * startY + 0.5 * cpY + 0.25 * endY;
+                    // Bezier midpoint for label
+                    const tx = 0.25 * sx + 0.5 * cpx + 0.25 * ex;
+                    const ty = 0.25 * sy + 0.5 * cpy + 0.25 * ey;
 
                     return (
-                        <motion.g
-                            key={`edge-${i}`}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.3 + i * 0.15, duration: 0.5 }}
-                        >
-                            {/* The curved trajectory line */}
-                            <motion.path
-                                d={pathData}
+                        <g key={`edge-${i}`}>
+                            {/* Glow underlay */}
+                            <path
+                                d={`M ${sx} ${sy} Q ${cpx} ${cpy} ${ex} ${ey}`}
+                                fill="none"
+                                stroke="var(--accent-400)"
+                                strokeWidth={4}
+                                opacity={0.08}
+                            />
+                            {/* Main curve */}
+                            <path
+                                d={`M ${sx} ${sy} Q ${cpx} ${cpy} ${ex} ${ey}`}
                                 fill="none"
                                 stroke="var(--accent-400)"
                                 strokeWidth={2}
-                                strokeDasharray="5 4"
-                                opacity={0.5}
+                                strokeDasharray="6 4"
+                                opacity={0.55}
                                 markerEnd={`url(#${markerId})`}
-                                initial={{ pathLength: 0 }}
-                                animate={{ pathLength: 1 }}
-                                transition={{ delay: 0.3 + i * 0.15, duration: 0.7, ease: "easeOut" }}
                             />
-                            
-                            {/* Amount Bubble */}
-                            <motion.g
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ delay: 0.6 + i * 0.15, type: 'spring', stiffness: 400, damping: 25 }}
-                            >
+                            {/* Amount pill */}
+                            <g filter={`url(#glow-${instanceId})`}>
                                 <rect
-                                    x={textX - 32}
-                                    y={textY - 12}
-                                    width={64}
-                                    height={24}
-                                    rx={12}
-                                    fill="var(--bg-glass)"
-                                    stroke="rgba(var(--accent-500-rgb), 0.2)"
+                                    x={tx - 34}
+                                    y={ty - 13}
+                                    width={68}
+                                    height={26}
+                                    rx={13}
+                                    fill="var(--bg-primary)"
+                                    stroke="rgba(var(--accent-500-rgb), 0.25)"
                                     strokeWidth={1.5}
-                                    filter={`url(#shadow-${instanceId})`}
                                 />
                                 <text
-                                    x={textX}
-                                    y={textY + 4}
+                                    x={tx}
+                                    y={ty + 5}
                                     textAnchor="middle"
                                     fontSize={11}
                                     fontWeight={700}
                                     fill="var(--accent-600)"
+                                    style={{ fontFamily: 'var(--font-sans)' }}
                                 >
                                     {formatCurrency(s.amount)}
                                 </text>
-                            </motion.g>
-                        </motion.g>
-                    );
-                })}
-
-                {/* Nodes (members) */}
-                {members.map((name, i) => {
-                    const pos = positions[i];
-                    const color = getAvatarColor(name);
-                    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                    const image = memberImages[name] || null;
-
-                    // Push labels outward away from the center of the graph
-                    const labelRadius = 40;
-                    const labelX = pos.x + Math.cos(pos.angle) * labelRadius;
-                    const labelY = pos.y + Math.sin(pos.angle) * labelRadius;
-
-                    return (
-                        <motion.g
-                            key={`node-${i}`}
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ delay: i * 0.1, type: 'spring', stiffness: 300, damping: 20 }}
-                        >
-                            <defs>
-                                <clipPath id={`avatar-clip-${instanceId}-${i}`}>
-                                    <circle cx={pos.x} cy={pos.y} r={24} />
-                                </clipPath>
-                            </defs>
-                            
-                            {/* Dynamic Glow */}
-                            <circle
-                                cx={pos.x}
-                                cy={pos.y}
-                                r={32}
-                                fill={color}
-                                opacity={0.12}
-                            />
-                            
-                            <g filter={`drop-shadow(0px 4px 12px rgba(0,0,0,0.08))`}>
-                                {image ? (
-                                    <>
-                                        <image
-                                            href={image}
-                                            x={pos.x - 24}
-                                            y={pos.y - 24}
-                                            width={48}
-                                            height={48}
-                                            clipPath={`url(#avatar-clip-${instanceId}-${i})`}
-                                            preserveAspectRatio="xMidYMid slice"
-                                        />
-                                        <circle
-                                            cx={pos.x}
-                                            cy={pos.y}
-                                            r={24}
-                                            fill="none"
-                                            stroke="var(--bg-primary)"
-                                            strokeWidth={3}
-                                        />
-                                    </>
-                                ) : (
-                                    <>
-                                        <circle
-                                            cx={pos.x}
-                                            cy={pos.y}
-                                            r={24}
-                                            fill={color}
-                                            stroke="var(--bg-primary)"
-                                            strokeWidth={3}
-                                        />
-                                        <text
-                                            x={pos.x}
-                                            y={pos.y + 5}
-                                            textAnchor="middle"
-                                            fontSize={14}
-                                            fontWeight={700}
-                                            fill="white"
-                                        >
-                                            {initials}
-                                        </text>
-                                    </>
-                                )}
                             </g>
-                            
-                            {/* Member Name outward label */}
-                            <motion.g
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ delay: 0.3 + i * 0.1 }}
-                            >
-                                <rect 
-                                    x={labelX - 30} 
-                                    y={labelY - 10} 
-                                    width={60} 
-                                    height={20} 
-                                    rx={10} 
-                                    fill="var(--bg-glass)"
-                                    opacity={0.8}
-                                />
-                                <text
-                                    x={labelX}
-                                    y={labelY + 4}
-                                    textAnchor="middle"
-                                    fontSize={11}
-                                    fontWeight={600}
-                                    fill="var(--fg-secondary)"
-                                >
-                                    {name.split(' ')[0]}
-                                </text>
-                            </motion.g>
-                        </motion.g>
+                        </g>
                     );
                 })}
             </svg>
+
+            {/* HTML layer for draggable nodes */}
+            {nodes.map((node, i) => {
+                const name = node.name;
+                const color = getAvatarColor(name);
+                const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                const image = memberImages[name] || null;
+                const firstName = name.split(' ')[0];
+
+                return (
+                    <motion.div
+                        key={`node-${name}`}
+                        drag
+                        dragMomentum={false}
+                        dragElastic={0}
+                        dragConstraints={containerRef}
+                        onDragStart={() => onDragStart(i)}
+                        onDrag={(_, info) => onDrag(i, info)}
+                        onDragEnd={() => onDragEnd(i)}
+                        initial={false}
+                        animate={{
+                            x: node.x - 28,
+                            y: node.y - 28,
+                        }}
+                        transition={dragIdx === i ? { duration: 0 } : { type: 'spring', stiffness: 120, damping: 20, mass: 0.8 }}
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: 56,
+                            height: 56,
+                            cursor: 'grab',
+                            zIndex: dragIdx === i ? 50 : 10,
+                            touchAction: 'none',
+                        }}
+                        whileDrag={{ scale: 1.15, cursor: 'grabbing' }}
+                        whileHover={{ scale: 1.08 }}
+                    >
+                        {/* Glow ring */}
+                        <div style={{
+                            position: 'absolute',
+                            top: -6,
+                            left: -6,
+                            width: 68,
+                            height: 68,
+                            borderRadius: '50%',
+                            background: `radial-gradient(circle, ${color}33 0%, transparent 70%)`,
+                            pointerEvents: 'none',
+                        }} />
+
+                        {/* Avatar */}
+                        <div style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            border: '3px solid var(--bg-primary)',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.12), 0 0 0 1px rgba(var(--accent-500-rgb), 0.1)',
+                            background: image ? 'var(--bg-secondary)' : color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative',
+                        }}>
+                            {image ? (
+                                <Image
+                                    src={image}
+                                    alt={name}
+                                    width={56}
+                                    height={56}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    draggable={false}
+                                />
+                            ) : (
+                                <span style={{
+                                    fontSize: 16,
+                                    fontWeight: 700,
+                                    color: 'white',
+                                    letterSpacing: '0.02em',
+                                    userSelect: 'none',
+                                }}>
+                                    {initials}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Name badge */}
+                        <div style={{
+                            position: 'absolute',
+                            bottom: -20,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            whiteSpace: 'nowrap',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: 'var(--fg-secondary)',
+                            background: 'var(--bg-glass)',
+                            backdropFilter: 'blur(8px)',
+                            WebkitBackdropFilter: 'blur(8px)',
+                            padding: '2px 10px',
+                            borderRadius: 10,
+                            border: '1px solid var(--border-glass)',
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                        }}>
+                            {firstName}
+                        </div>
+                    </motion.div>
+                );
+            })}
         </div>
     );
 }
