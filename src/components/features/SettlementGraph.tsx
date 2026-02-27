@@ -34,7 +34,7 @@ interface NodeState {
 function initNodes(members: string[], w: number, h: number): NodeState[] {
     const cx = w / 2;
     const cy = h / 2;
-    const r = Math.min(cx, cy) * 0.55;
+    const r = Math.min(cx, cy) * 0.72;
     return members.map((name, i) => {
         const angle = (2 * Math.PI * i) / members.length - Math.PI / 2;
         return {
@@ -52,12 +52,12 @@ function initNodes(members: string[], w: number, h: number): NodeState[] {
 function simulate(nodes: NodeState[], edges: { source: number; target: number }[], w: number, h: number) {
     const cx = w / 2;
     const cy = h / 2;
-    const REPULSION = 4000;
-    const SPRING_K = 0.015;
-    const IDEAL_LEN = Math.min(w, h) * 0.38;
-    const CENTER_PULL = 0.002;
-    const DAMPING = 0.75;
-    const PADDING = 50;
+    const REPULSION = 8000;
+    const SPRING_K = 0.012;
+    const IDEAL_LEN = Math.min(w, h) * 0.52;
+    const CENTER_PULL = 0.0015;
+    const DAMPING = 0.72;
+    const PADDING = 60;
 
     // Reset forces
     for (const n of nodes) {
@@ -123,7 +123,7 @@ export default function SettlementGraph({
     instanceId = 'default',
 }: SettlementGraphProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [size, setSize] = useState({ w: 360, h: compact ? 280 : 360 });
+    const [size, setSize] = useState({ w: 360, h: compact ? 340 : 480 });
     const [nodes, setNodes] = useState<NodeState[]>([]);
     const [dragIdx, setDragIdx] = useState<number | null>(null);
     const nodesRef = useRef<NodeState[]>([]);
@@ -147,7 +147,7 @@ export default function SettlementGraph({
         function onResize() {
             if (containerRef.current) {
                 const w = containerRef.current.offsetWidth;
-                setSize({ w, h: compact ? Math.min(w, 300) : Math.min(w, 400) });
+                setSize({ w, h: compact ? Math.min(w, 360) : Math.min(w * 1.2, 480) });
             }
         }
         onResize();
