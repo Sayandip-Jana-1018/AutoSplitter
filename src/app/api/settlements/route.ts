@@ -278,8 +278,7 @@ export async function POST(req: Request) {
                 },
             });
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (prisma as any).groupMessage.create({
+            await prisma.groupMessage.create({
                 data: {
                     groupId: trip.group.id,
                     senderId: user.id,

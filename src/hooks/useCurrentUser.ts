@@ -19,9 +19,13 @@ let fetchPromise: Promise<CurrentUser | null> | null = null;
 async function fetchUser(): Promise<CurrentUser | null> {
     try {
         const res = await fetch('/api/me');
-        if (!res.ok) return null;
+        if (!res.ok) {
+            fetchPromise = null; // Allow retry on next mount
+            return null;
+        }
         return await res.json();
     } catch {
+        fetchPromise = null; // Allow retry on next mount
         return null;
     }
 }

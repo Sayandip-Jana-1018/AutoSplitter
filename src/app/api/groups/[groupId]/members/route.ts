@@ -101,8 +101,27 @@ export async function DELETE(
                                 });
                             }
                         }
+                    } else {
+                        // For custom/percentage splits: redistribute removed member's share proportionally
+                        const remainingSplits = txn.splits.filter(s => s.userId !== userId);
+                        const removedAmount = memberSplit.amount;
+                        const remainingTotal = remainingSplits.reduce((sum, s) => sum + s.amount, 0);
+
+                        if (remainingSplits.length > 0 && removedAmount > 0) {
+                            let distributed = 0;
+                            for (let i = 0; i < remainingSplits.length; i++) {
+                                const isLast = i === remainingSplits.length - 1;
+                                const share = isLast
+                                    ? removedAmount - distributed
+                                    : Math.round((remainingSplits[i].amount / (remainingTotal || 1)) * removedAmount);
+                                distributed += share;
+                                await tx.splitItem.update({
+                                    where: { id: remainingSplits[i].id },
+                                    data: { amount: remainingSplits[i].amount + share },
+                                });
+                            }
+                        }
                     }
-                    // For custom/percentage splits: just remove the member's split, leave others unchanged
                 }
             }
         });

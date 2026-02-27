@@ -23,6 +23,7 @@ export async function GET(req: Request) {
         // Search groups user belongs to
         const groups = await prisma.group.findMany({
             where: {
+                deletedAt: null,
                 OR: [
                     { ownerId: user.id },
                     { members: { some: { userId: user.id } } },
@@ -41,6 +42,7 @@ export async function GET(req: Request) {
         // Search transactions across all user's groups
         const transactions = await prisma.transaction.findMany({
             where: {
+                deletedAt: null,
                 trip: {
                     group: {
                         OR: [

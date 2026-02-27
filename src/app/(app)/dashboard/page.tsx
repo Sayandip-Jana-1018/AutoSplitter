@@ -29,6 +29,7 @@ import ParticleBackground from '@/components/ui/ParticleBackground';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { formatCurrency, timeAgo } from '@/lib/utils';
 import useSWR from 'swr';
+import Link from 'next/link';
 
 const fetcher = (url: string) => fetch(url).then((res) => {
     if (res.status === 401) {
@@ -562,7 +563,7 @@ export default function DashboardPage() {
 
                     {/* ═══ ANALYTICS LINK + MEMBERS ═══ */}
                     <motion.div variants={fadeUp} transition={{ duration: 0.5, delay: 0.35 }}>
-                        <a href="/analytics" style={{ textDecoration: 'none' }}>
+                        <Link href="/analytics" style={{ textDecoration: 'none' }}>
                             <div style={{
                                 ...glassCard,
                                 borderRadius: 'var(--radius-xl)',
@@ -600,7 +601,7 @@ export default function DashboardPage() {
                                     <ArrowRight size={16} style={{ color: 'var(--fg-muted)' }} />
                                 </div>
                             </div>
-                        </a>
+                        </Link>
                     </motion.div>
 
                     {/* Trip Members */}
@@ -610,7 +611,7 @@ export default function DashboardPage() {
                             <div style={{ ...glassCard, borderRadius: 'var(--radius-xl)', padding: 'var(--space-4)' }}>
                                 <div style={{ ...glassCardInner, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <AvatarGroup users={members} max={5} size="md" />
-                                    <Button variant="ghost" size="sm" rightIcon={<ArrowRight size={14} />}>
+                                    <Button variant="ghost" size="sm" rightIcon={<ArrowRight size={14} />} onClick={() => router.push('/groups')}>
                                         Manage
                                     </Button>
                                 </div>
@@ -753,13 +754,13 @@ function SectionHeader({ title, action, href }: {
                 {title}
             </h3>
             {action && href && (
-                <a href={href} style={{
+                <Link href={href} style={{
                     fontSize: 'var(--text-xs)', color: 'var(--accent-400)', fontWeight: 600,
                     display: 'flex', alignItems: 'center', gap: 3, transition: 'color 0.2s',
                     textDecoration: 'none',
                 }}>
                     {action} <ArrowRight size={12} />
-                </a>
+                </Link>
             )}
         </div>
     );

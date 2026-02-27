@@ -104,7 +104,6 @@ export default function OnboardingTour() {
     useEffect(() => {
         if (!active) return;
 
-        let frameId: number;
         let lastTarget: string | undefined = undefined;
 
         const updateRect = () => {
@@ -128,14 +127,16 @@ export default function OnboardingTour() {
                     setSpotlightRect(null);
                 }
             }
-
-            frameId = requestAnimationFrame(updateRect);
         };
 
-        frameId = requestAnimationFrame(updateRect);
+        // Measure once immediately, then re-measure only on resize/scroll
+        updateRect();
+        window.addEventListener('resize', updateRect);
+        window.addEventListener('scroll', updateRect, true);
 
         return () => {
-            if (frameId) cancelAnimationFrame(frameId);
+            window.removeEventListener('resize', updateRect);
+            window.removeEventListener('scroll', updateRect, true);
         };
     }, [active, step]);
 

@@ -102,8 +102,7 @@ export async function POST(
             }
 
             // ── Auto-post settlement message in group chat ──
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (prisma as any).groupMessage.create({
+            await prisma.groupMessage.create({
                 data: {
                     groupId: settlement.trip.groupId,
                     senderId: user.id,

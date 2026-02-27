@@ -103,6 +103,25 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Cannot send notification to yourself' }, { status: 400 });
         }
 
+        // Rate limit: max 1 reminder per pair per minute
+        if (type === 'payment_reminder') {
+            const oneMinuteAgo = new Date(Date.now() - 60_000);
+            const recentReminder = await prisma.notification.findFirst({
+                where: {
+                    userId,
+                    actorId: sender.id,
+                    type: 'payment_reminder',
+                    createdAt: { gte: oneMinuteAgo },
+                },
+            });
+            if (recentReminder) {
+                return NextResponse.json(
+                    { error: 'Reminder already sent recently. Try again in a minute.' },
+                    { status: 429 }
+                );
+            }
+        }
+
         // Security: Verify sender and recipient share at least one group
         const sharedGroup = await prisma.group.findFirst({
             where: {

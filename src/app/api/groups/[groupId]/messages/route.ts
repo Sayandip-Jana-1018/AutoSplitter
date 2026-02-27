@@ -123,6 +123,22 @@ export async function POST(
             return NextResponse.json({ error: 'Not a member of this group' }, { status: 403 });
         }
 
+        // Rate limit: max 5 messages per 10 seconds per user per group
+        const tenSecondsAgo = new Date(Date.now() - 10_000);
+        const recentCount = await prisma.groupMessage.count({
+            where: {
+                groupId,
+                senderId: user.id,
+                createdAt: { gte: tenSecondsAgo },
+            },
+        });
+        if (recentCount >= 5) {
+            return NextResponse.json(
+                { error: 'Slow down! You\'re sending messages too quickly.' },
+                { status: 429 }
+            );
+        }
+
         // Create the message
         const message = await prisma.groupMessage.create({
             data: {

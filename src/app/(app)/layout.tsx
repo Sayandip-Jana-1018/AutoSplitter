@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -76,10 +76,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return window.matchMedia('(min-width: 1024px)').matches;
+        }
+        return false;
+    });
     const haptics = useHaptics();
     const { user } = useCurrentUser();
 
-    const pageTitle = NAV_ITEMS.find((item) => pathname.startsWith(item.href))?.label || 'Dashboard';
+    // Detect desktop breakpoint to conditionally render desktop sidebar
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 1024px)');
+        const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
+
+    const pageTitle = useMemo(
+        () => NAV_ITEMS.find((item) => pathname.startsWith(item.href))?.label || 'Dashboard',
+        [pathname]
+    );
 
     const navigateTo = (href: string) => {
         haptics.light();
@@ -198,68 +215,70 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
             </AnimatePresence>
 
-            {/* ── Desktop Sidebar (always visible on 1024px+) ── */}
-            <aside className={cn(styles.sidebar, styles.desktopSidebar)}>
-                <div className={styles.sidebarMesh} />
-                <div className={styles.sidebarLogo}>
-                    <div className={styles.sidebarLogoIcon}>⚡</div>
-                    <span className="gradient-text-animated" style={{ fontWeight: 800, fontSize: 20 }}>SplitX</span>
-                </div>
-                <nav className={styles.sidebarNav}>
-                    <span className={styles.sidebarSection}>
-                        <Sparkles size={12} style={{ opacity: 0.5 }} /> Navigation
-                    </span>
-                    {NAV_ITEMS.map((item) => {
-                        const isActive = pathname.startsWith(item.href);
-                        const Icon = item.icon;
-                        return (
-                            <motion.button
-                                key={item.href}
-                                className={cn(styles.navItem, isActive && styles.navItemActive)}
-                                onClick={() => router.push(item.href)}
-                                whileTap={{ scale: 0.97 }}
-                                whileHover={{ x: 4 }}
-                            >
-                                <motion.span
-                                    className={styles.navItemIcon}
-                                    animate={isActive ? { scale: [1, 1.2, 0.95, 1.05, 1] } : { scale: 1 }}
-                                    transition={isActive ? { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] } : {}}
-                                >
-                                    <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
-                                </motion.span>
-                                <span className={styles.navItemLabel}>{item.label}</span>
-                                {isActive && (
-                                    <motion.div
-                                        className={styles.navItemActiveGlow}
-                                        layoutId="desktopActiveGlow"
-                                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                    />
-                                )}
-                            </motion.button>
-                        );
-                    })}
-                </nav>
-                <div className={styles.sidebarFooter}>
-                    <div className={styles.userCard}>
-                        <div className={styles.userAvatarWrap}>
-                            <Avatar name={user?.name || 'User'} image={user?.image} size="sm" />
-                            <span className={styles.userOnlineDot} />
-                        </div>
-                        <div className={styles.userInfo}>
-                            <div className={styles.userName}>{user?.name || 'User'}</div>
-                            <div className={styles.userEmail}>{user?.email || ''}</div>
-                        </div>
+            {/* ── Desktop Sidebar (only rendered on 1024px+) ── */}
+            {isDesktop && (
+                <aside className={cn(styles.sidebar, styles.desktopSidebar)}>
+                    <div className={styles.sidebarMesh} />
+                    <div className={styles.sidebarLogo}>
+                        <div className={styles.sidebarLogoIcon}>⚡</div>
+                        <span className="gradient-text-animated" style={{ fontWeight: 800, fontSize: 20 }}>SplitX</span>
                     </div>
-                    <motion.button
-                        className={styles.signOutBtn}
-                        onClick={() => signOut({ callbackUrl: '/login' })}
-                        whileTap={{ scale: 0.96 }}
-                    >
-                        <LogOut size={16} />
-                        Sign Out
-                    </motion.button>
-                </div>
-            </aside>
+                    <nav className={styles.sidebarNav}>
+                        <span className={styles.sidebarSection}>
+                            <Sparkles size={12} style={{ opacity: 0.5 }} /> Navigation
+                        </span>
+                        {NAV_ITEMS.map((item) => {
+                            const isActive = pathname.startsWith(item.href);
+                            const Icon = item.icon;
+                            return (
+                                <motion.button
+                                    key={item.href}
+                                    className={cn(styles.navItem, isActive && styles.navItemActive)}
+                                    onClick={() => router.push(item.href)}
+                                    whileTap={{ scale: 0.97 }}
+                                    whileHover={{ x: 4 }}
+                                >
+                                    <motion.span
+                                        className={styles.navItemIcon}
+                                        animate={isActive ? { scale: [1, 1.2, 0.95, 1.05, 1] } : { scale: 1 }}
+                                        transition={isActive ? { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] } : {}}
+                                    >
+                                        <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
+                                    </motion.span>
+                                    <span className={styles.navItemLabel}>{item.label}</span>
+                                    {isActive && (
+                                        <motion.div
+                                            className={styles.navItemActiveGlow}
+                                            layoutId="desktopActiveGlow"
+                                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                        />
+                                    )}
+                                </motion.button>
+                            );
+                        })}
+                    </nav>
+                    <div className={styles.sidebarFooter}>
+                        <div className={styles.userCard}>
+                            <div className={styles.userAvatarWrap}>
+                                <Avatar name={user?.name || 'User'} image={user?.image} size="sm" />
+                                <span className={styles.userOnlineDot} />
+                            </div>
+                            <div className={styles.userInfo}>
+                                <div className={styles.userName}>{user?.name || 'User'}</div>
+                                <div className={styles.userEmail}>{user?.email || ''}</div>
+                            </div>
+                        </div>
+                        <motion.button
+                            className={styles.signOutBtn}
+                            onClick={() => signOut({ callbackUrl: '/login' })}
+                            whileTap={{ scale: 0.96 }}
+                        >
+                            <LogOut size={16} />
+                            Sign Out
+                        </motion.button>
+                    </div>
+                </aside>
+            )}
 
             {/* ── Main Area ── */}
             <main className={styles.main}>

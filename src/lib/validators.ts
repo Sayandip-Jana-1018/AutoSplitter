@@ -28,24 +28,6 @@ export const createTripSchema = z.object({
     currency: z.string().default('INR'),
 });
 
-// ── Transaction ──
-export const createTransactionSchema = z.object({
-    tripId: z.string().cuid(),
-    payerId: z.string().cuid(),
-    amount: z.number().positive('Amount must be positive'), // in rupees (will be converted to paise)
-    title: z.string().min(1, 'Title is required').max(200),
-    description: z.string().max(500).optional(),
-    category: z.string().default('general'),
-    method: z.string().default('cash'),
-    splitType: z.enum(['equal', 'percentage', 'custom', 'items']).default('equal'),
-    splits: z.array(z.object({
-        userId: z.string().cuid(),
-        amount: z.number().optional(),       // for custom split (in rupees)
-        percentage: z.number().optional(),   // for percentage split
-    })).optional(),
-    date: z.string().optional(),
-});
-
 // ── Settlement ──
 export const markSettlementSchema = z.object({
     settlementId: z.string().cuid(),
@@ -58,4 +40,3 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 export type CreateTripInput = z.infer<typeof createTripSchema>;
-export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;

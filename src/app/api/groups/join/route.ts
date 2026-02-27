@@ -24,9 +24,9 @@ export async function POST(req: Request) {
         const user = await prisma.user.findUnique({ where: { email: session.user.email } });
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // Find group by invite code
-        const group = await prisma.group.findUnique({
-            where: { inviteCode: parsed.data.inviteCode },
+        // Find group by invite code (exclude deleted groups)
+        const group = await prisma.group.findFirst({
+            where: { inviteCode: parsed.data.inviteCode, deletedAt: null },
             include: {
                 members: { select: { userId: true } },
             },
@@ -92,8 +92,8 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'code param required' }, { status: 400 });
         }
 
-        const group = await prisma.group.findUnique({
-            where: { inviteCode: code },
+        const group = await prisma.group.findFirst({
+            where: { inviteCode: code, deletedAt: null },
             select: {
                 id: true,
                 name: true,

@@ -16,6 +16,7 @@ type NotificationType =
 
 interface CreateNotificationParams {
     userId: string;
+    actorId?: string;
     type: NotificationType;
     title: string;
     body: string;
@@ -33,6 +34,7 @@ export async function createNotification(params: CreateNotificationParams) {
         return await prisma.notification.create({
             data: {
                 userId: params.userId,
+                actorId: params.actorId,
                 type: params.type,
                 title: params.title,
                 body: params.body,
@@ -58,6 +60,7 @@ export async function createBulkNotifications(
         await prisma.notification.createMany({
             data: userIds.map(userId => ({
                 userId,
+                actorId: params.actorId,
                 type: params.type,
                 title: params.title,
                 body: params.body,

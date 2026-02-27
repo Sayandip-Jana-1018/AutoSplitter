@@ -20,7 +20,12 @@ interface PendingSettlement {
 
 export default function NotificationBanner() {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [dismissed, setDismissed] = useState(false);
+    const [dismissed, setDismissed] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return sessionStorage.getItem('notif-banner-dismissed') === 'true';
+        }
+        return false;
+    });
     const [mounted, setMounted] = useState(false);
     const haptics = useHaptics();
 
@@ -33,7 +38,11 @@ export default function NotificationBanner() {
     const { user: currentUserData } = useCurrentUser();
     const currentUserId = currentUserData?.id || null;
 
-    const { data: settData, isLoading } = useSWR(currentUserId ? '/api/settlements' : null, fetcher);
+    const { data: settData, isLoading } = useSWR(
+        currentUserId ? '/api/settlements' : null,
+        fetcher,
+        { revalidateOnFocus: false, dedupingInterval: 60_000 }
+    );
 
     // Derive settlements and loading state from SWR data (no setState in effect)
     const { settlements, dataLoaded } = useMemo(() => {
@@ -71,6 +80,7 @@ export default function NotificationBanner() {
         e.stopPropagation();
         haptics.light();
         setDismissed(true);
+        sessionStorage.setItem('notif-banner-dismissed', 'true');
     }, [haptics]);
 
     if (dismissed) return null;

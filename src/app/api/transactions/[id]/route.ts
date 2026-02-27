@@ -85,10 +85,11 @@ export async function PUT(
         const user = await prisma.user.findUnique({ where: { email: session.user.email } });
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        // Verify access — must be payer or group owner
+        // Verify access — must be payer or group owner, and not soft-deleted
         const existing = await prisma.transaction.findFirst({
             where: {
                 id,
+                deletedAt: null,
                 OR: [
                     { payerId: user.id },
                     { trip: { group: { ownerId: user.id } } },

@@ -623,90 +623,113 @@ export default function SettlementsPage() {
                                 {/* Actions */}
                                 {!isSettled && (
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', paddingTop: 'var(--space-4)' }}>
-                                        {isSender && (
-                                            <Button size="sm" leftIcon={<CreditCard size={13} />}
-                                                style={{
-                                                    background: 'linear-gradient(135deg, #4CAF50, #2E7D32)',
-                                                    boxShadow: '0 4px 16px rgba(76,175,80,0.25)',
-                                                }}
-                                                onClick={async () => {
-                                                    const resolvedTripId = settlement.tripId || tripId;
-                                                    if (!resolvedTripId) { toast('No active trip — add an expense first', 'error'); return; }
-                                                    try {
-                                                        const res = await fetch('/api/settlements', {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({
-                                                                tripId: resolvedTripId,
-                                                                toUserId: settlement.to.id,
-                                                                amount: settlement.amount,
-                                                                method: 'upi',
-                                                            }),
-                                                        });
-                                                        if (!res.ok) {
-                                                            const err = await res.json().catch(() => ({}));
-                                                            toast(err.error || 'Failed to create settlement', 'error');
-                                                            return;
-                                                        }
-                                                        const created = await res.json();
-                                                        setUpiModal({
-                                                            open: true,
-                                                            amount: settlement.amount,
-                                                            payeeName: settlement.to.name,
-                                                            payeeUpiId: settlement.toUpiId || undefined,
-                                                            settlementId: created.id,
-                                                        });
-                                                    } catch {
-                                                        toast('Network error', 'error');
-                                                    }
-                                                }}
-                                            >
-                                                Pay via UPI
-                                            </Button>
-                                        )}
-                                        {isReceiver && (
-                                            <Button size="sm" variant="outline"
-                                                leftIcon={<Bell size={13} />}
-                                                onClick={async () => {
-                                                    try {
-                                                        const res = await fetch('/api/notifications', {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({
-                                                                userId: settlement.from.id,
-                                                                type: 'payment_reminder',
-                                                                title: 'Payment Reminder',
-                                                                body: `${settlement.to.name} is reminding you to pay ${formatCurrency(settlement.amount)}`,
-                                                                link: '/settlements',
-                                                            }),
-                                                        });
-                                                        if (res.ok) {
-                                                            toast('Reminder sent!', 'success');
-                                                        } else {
-                                                            toast('Failed to send reminder', 'error');
-                                                        }
-                                                    } catch {
-                                                        toast('Network error', 'error');
-                                                    }
-                                                }}
-                                            >
-                                                Remind
-                                            </Button>
-                                        )}
-                                        {(isSender || isReceiver) && (
-                                            <button
-                                                onClick={() => setConfirmSettle({ from: settlement.from.id, to: settlement.to.id, amount: settlement.amount, tripId })}
-                                                style={{
-                                                    background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
-                                                    fontSize: 'var(--text-xs)', color: 'var(--fg-muted)',
-                                                    textDecoration: 'underline', textUnderlineOffset: 2,
-                                                }}
-                                            >
-                                                Mark Settled
-                                            </button>
-                                        )}
-                                        {!isSender && !isReceiver && (
-                                            <Badge variant="accent">Between others</Badge>
+                                        {activeSlide === 0 ? (
+                                            /* Global Pairwise view — informational only, no payment actions */
+                                            <>
+                                                {!isSender && !isReceiver && (
+                                                    <Badge variant="accent">Between others</Badge>
+                                                )}
+                                                {(isSender || isReceiver) && (
+                                                    <span style={{
+                                                        fontSize: 'var(--text-xs)', color: 'var(--fg-muted)',
+                                                        textAlign: 'center', lineHeight: 1.4,
+                                                        padding: '4px 12px',
+                                                        background: 'rgba(var(--accent-500-rgb), 0.06)',
+                                                        borderRadius: 'var(--radius-lg)',
+                                                    }}>
+                                                        Swipe to a group to pay or settle
+                                                    </span>
+                                                )}
+                                            </>
+                                        ) : (
+                                            /* Per-group view — show all payment actions */
+                                            <>
+                                                {isSender && (
+                                                    <Button size="sm" leftIcon={<CreditCard size={13} />}
+                                                        style={{
+                                                            background: 'linear-gradient(135deg, #4CAF50, #2E7D32)',
+                                                            boxShadow: '0 4px 16px rgba(76,175,80,0.25)',
+                                                        }}
+                                                        onClick={async () => {
+                                                            const resolvedTripId = settlement.tripId || tripId;
+                                                            if (!resolvedTripId) { toast('No active trip — add an expense first', 'error'); return; }
+                                                            try {
+                                                                const res = await fetch('/api/settlements', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({
+                                                                        tripId: resolvedTripId,
+                                                                        toUserId: settlement.to.id,
+                                                                        amount: settlement.amount,
+                                                                        method: 'upi',
+                                                                    }),
+                                                                });
+                                                                if (!res.ok) {
+                                                                    const err = await res.json().catch(() => ({}));
+                                                                    toast(err.error || 'Failed to create settlement', 'error');
+                                                                    return;
+                                                                }
+                                                                const created = await res.json();
+                                                                setUpiModal({
+                                                                    open: true,
+                                                                    amount: settlement.amount,
+                                                                    payeeName: settlement.to.name,
+                                                                    payeeUpiId: settlement.toUpiId || undefined,
+                                                                    settlementId: created.id,
+                                                                });
+                                                            } catch {
+                                                                toast('Network error', 'error');
+                                                            }
+                                                        }}
+                                                    >
+                                                        Pay via UPI
+                                                    </Button>
+                                                )}
+                                                {isReceiver && (
+                                                    <Button size="sm" variant="outline"
+                                                        leftIcon={<Bell size={13} />}
+                                                        onClick={async () => {
+                                                            try {
+                                                                const res = await fetch('/api/notifications', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({
+                                                                        userId: settlement.from.id,
+                                                                        type: 'payment_reminder',
+                                                                        title: 'Payment Reminder',
+                                                                        body: `${settlement.to.name} is reminding you to pay ${formatCurrency(settlement.amount)}`,
+                                                                        link: '/settlements',
+                                                                    }),
+                                                                });
+                                                                if (res.ok) {
+                                                                    toast('Reminder sent!', 'success');
+                                                                } else {
+                                                                    toast('Failed to send reminder', 'error');
+                                                                }
+                                                            } catch {
+                                                                toast('Network error', 'error');
+                                                            }
+                                                        }}
+                                                    >
+                                                        Remind
+                                                    </Button>
+                                                )}
+                                                {(isSender || isReceiver) && (
+                                                    <button
+                                                        onClick={() => setConfirmSettle({ from: settlement.from.id, to: settlement.to.id, amount: settlement.amount, tripId })}
+                                                        style={{
+                                                            background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0',
+                                                            fontSize: 'var(--text-xs)', color: 'var(--fg-muted)',
+                                                            textDecoration: 'underline', textUnderlineOffset: 2,
+                                                        }}
+                                                    >
+                                                        Mark Settled
+                                                    </button>
+                                                )}
+                                                {!isSender && !isReceiver && (
+                                                    <Badge variant="accent">Between others</Badge>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 )}

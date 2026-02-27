@@ -54,6 +54,13 @@ export default function GlobalSearch() {
         return () => window.removeEventListener('keydown', handler);
     }, []);
 
+    // Clean up debounce timer on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, []);
+
     const search = useCallback(async (q: string) => {
         if (q.length < 2) { setResults({ groups: [], transactions: [] }); return; }
         setSearching(true);

@@ -49,7 +49,7 @@ export async function GET(req: Request) {
         // If tripId is provided, use it directly
         if (tripId) {
             const transactions = await prisma.transaction.findMany({
-                where: { tripId },
+                where: { tripId, deletedAt: null },
                 include: {
                     payer: { select: { id: true, name: true, image: true } },
                     splits: {
@@ -88,7 +88,7 @@ export async function GET(req: Request) {
         if (trips.length === 0) return NextResponse.json([]);
 
         const transactions = await prisma.transaction.findMany({
-            where: { tripId: { in: trips.map(t => t.id) } },
+            where: { tripId: { in: trips.map(t => t.id) }, deletedAt: null },
             include: {
                 payer: { select: { id: true, name: true, image: true } },
                 splits: {

@@ -35,6 +35,9 @@ export default function SettingsPage() {
     const [savingProfile, setSavingProfile] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingAccount, setDeletingAccount] = useState(false);
+    const [exportingData, setExportingData] = useState(false);
 
     useEffect(() => { setMounted(true); }, []);
 
@@ -64,7 +67,8 @@ export default function SettingsPage() {
                 // Refresh cached user so data persists across navigations
                 await refreshUser();
             } else {
-                toast('Failed to update', 'error');
+                const err = await res.json().catch(() => ({}));
+                toast(err.error || 'Failed to update', 'error');
             }
         } catch {
             toast('Network error', 'error');
@@ -94,7 +98,7 @@ export default function SettingsPage() {
             const res = await fetch('/api/me/avatar', { method: 'POST', body: formData });
             if (res.ok) {
                 toast('Avatar updated!', 'success');
-                window.location.reload();
+                await refreshUser();
             } else {
                 const data = await res.json();
                 toast(data.error || 'Upload failed', 'error');
@@ -109,6 +113,49 @@ export default function SettingsPage() {
     const handleSignOut = async () => {
         try { await signOut({ callbackUrl: '/login' }); }
         catch { window.location.href = '/login'; }
+    };
+
+    const handleExportData = async () => {
+        setExportingData(true);
+        try {
+            const res = await fetch('/api/me');
+            if (res.ok) {
+                const data = await res.json();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `splitx-data-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast('Data exported successfully!', 'success');
+            } else {
+                toast('Failed to export data', 'error');
+            }
+        } catch {
+            toast('Network error', 'error');
+        } finally {
+            setExportingData(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        setDeletingAccount(true);
+        try {
+            const res = await fetch('/api/me', { method: 'DELETE' });
+            if (res.ok) {
+                toast('Account deleted. Goodbye!', 'success');
+                await signOut({ callbackUrl: '/login' });
+            } else {
+                const err = await res.json().catch(() => ({}));
+                toast(err.error || 'Failed to delete account', 'error');
+            }
+        } catch {
+            toast('Network error', 'error');
+        } finally {
+            setDeletingAccount(false);
+            setShowDeleteConfirm(false);
+        }
     };
 
     const memberSince = mounted && user?.createdAt
@@ -327,8 +374,8 @@ export default function SettingsPage() {
             {/* ═══ NOTIFICATIONS ═══ */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <GlassSection title="Notifications" icon={<Bell size={16} />}>
-                    <GlassRow label="Push Notifications" subtitle="Get notified about settlements" />
-                    <GlassRow label="Expense Reminders" subtitle="Daily summary of pending splits" />
+                    <GlassRow label="Push Notifications" subtitle="Coming soon" disabled />
+                    <GlassRow label="Expense Reminders" subtitle="Coming soon" disabled />
                 </GlassSection>
             </motion.div>
 
@@ -336,8 +383,12 @@ export default function SettingsPage() {
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <GlassSection title="Privacy & Security" icon={<Shield size={16} />}>
                     <GlassRow label="Data Processing" subtitle="All data processed on-device" disabled />
-                    <GlassRow label="Export My Data" action />
-                    <GlassRow label="Delete Account" danger action />
+                    <div onClick={handleExportData} style={{ cursor: exportingData ? 'wait' : 'pointer' }}>
+                        <GlassRow label={exportingData ? 'Exporting...' : 'Export My Data'} action />
+                    </div>
+                    <div onClick={() => setShowDeleteConfirm(true)} style={{ cursor: 'pointer' }}>
+                        <GlassRow label="Delete Account" danger action />
+                    </div>
                 </GlassSection>
             </motion.div>
 
@@ -376,6 +427,48 @@ export default function SettingsPage() {
                     <LogOut size={16} /> Sign Out
                 </button>
             </motion.div>
+
+            {/* ═══ DELETE ACCOUNT CONFIRMATION MODAL ═══ */}
+            {showDeleteConfirm && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 9999,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
+                }}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        style={{
+                            ...glass, maxWidth: 380, width: '90%', padding: 'var(--space-5)',
+                            textAlign: 'center',
+                        }}
+                    >
+                        <div style={{ fontSize: 40, marginBottom: 'var(--space-3)' }}>⚠️</div>
+                        <div style={{ fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--fg-primary)', marginBottom: 'var(--space-2)' }}>
+                            Delete Your Account?
+                        </div>
+                        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-tertiary)', marginBottom: 'var(--space-4)', lineHeight: 1.5 }}>
+                            This will permanently delete your account, all groups you own, and all your data. This action cannot be undone.
+                        </div>
+                        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                            <Button fullWidth variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={deletingAccount}>
+                                Cancel
+                            </Button>
+                            <Button
+                                fullWidth
+                                onClick={handleDeleteAccount}
+                                disabled={deletingAccount}
+                                style={{
+                                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                                    color: 'white',
+                                }}
+                            >
+                                {deletingAccount ? 'Deleting...' : 'Delete Forever'}
+                            </Button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 }

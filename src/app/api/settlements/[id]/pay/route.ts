@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { generateUpiLink } from '@/lib/upi';
 
 // POST /api/settlements/:id/pay — Generate UPI deep link and mark settlement as initiated
 export async function POST(
@@ -58,11 +59,13 @@ export async function POST(
             );
         }
 
-        // Generate UPI deep link
-        const amountInRupees = (settlement.amount / 100).toFixed(2);
-        const payeeName = encodeURIComponent(settlement.to.name || 'SplitX User');
-        const note = encodeURIComponent(`SplitX settlement`);
-        const upiUrl = `upi://pay?pa=${settlement.to.upiId}&pn=${payeeName}&am=${amountInRupees}&cu=INR&tn=${note}`;
+        // Generate UPI deep link using shared utility
+        const upiUrl = generateUpiLink({
+            upiId: settlement.to.upiId,
+            payeeName: settlement.to.name || 'SplitX User',
+            amount: settlement.amount / 100,
+            note: 'SplitX settlement',
+        });
 
         // Update settlement status to "initiated"
         await prisma.settlement.update({

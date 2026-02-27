@@ -25,6 +25,25 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'groupId required' }, { status: 400 });
         }
 
+        // Verify user is a member/owner of the group
+        const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+        if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+        const group = await prisma.group.findFirst({
+            where: {
+                id: groupId,
+                deletedAt: null,
+                OR: [
+                    { ownerId: user.id },
+                    { members: { some: { userId: user.id } } },
+                ],
+            },
+            select: { id: true },
+        });
+        if (!group) {
+            return NextResponse.json({ error: 'Group not found or access denied' }, { status: 404 });
+        }
+
         const trips = await prisma.trip.findMany({
             where: { groupId },
             include: {

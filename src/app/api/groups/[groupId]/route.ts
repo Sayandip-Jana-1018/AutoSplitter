@@ -73,6 +73,13 @@ export async function GET(
                     balances[split.userId] = (balances[split.userId] || 0) - split.amount;
                 }
             }
+            // Account for completed/confirmed settlements
+            for (const s of trip.settlements) {
+                if ((s.status === 'completed' || s.status === 'confirmed') && !s.deletedAt) {
+                    balances[s.fromId] = (balances[s.fromId] || 0) + s.amount;
+                    balances[s.toId] = (balances[s.toId] || 0) - s.amount;
+                }
+            }
         }
 
         // Compute total spent
