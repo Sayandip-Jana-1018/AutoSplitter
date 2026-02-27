@@ -626,10 +626,9 @@ export default function SettlementsPage() {
                                         {activeSlide === 0 ? (
                                             /* Global Pairwise view — informational only, no payment actions */
                                             <>
-                                                {!isSender && !isReceiver && (
+                                                {!isSender && !isReceiver ? (
                                                     <Badge variant="accent">Between others</Badge>
-                                                )}
-                                                {(isSender || isReceiver) && (
+                                                ) : (
                                                     <span style={{
                                                         fontSize: 'var(--text-xs)', color: 'var(--fg-muted)',
                                                         textAlign: 'center', lineHeight: 1.4,
