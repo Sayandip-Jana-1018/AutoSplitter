@@ -199,41 +199,98 @@ export async function GET() {
             });
         }
 
-        // 8) Compute global pairwise debts
+        // 8) Compute global pairwise debts WITH per-group breakdown
         const pairwise = new Map<string, number>();
+        // Track pairwise debts per-group for breakdown transparency
+        const pairwiseByGroup = new Map<string, Map<string, { amount: number; groupName: string; groupEmoji: string }>>();
         const addDebt = (fromId: string, toId: string, amount: number) => {
             if (fromId === toId) return;
             const key = fromId < toId ? `${fromId}:${toId}` : `${toId}:${fromId}`;
             const sign = fromId < toId ? 1 : -1;
             pairwise.set(key, (pairwise.get(key) || 0) + amount * sign);
         };
+        const addDebtForGroup = (fromId: string, toId: string, amount: number, groupName: string, groupEmoji: string, tripId: string) => {
+            if (fromId === toId) return;
+            const key = fromId < toId ? `${fromId}:${toId}` : `${toId}:${fromId}`;
+            const sign = fromId < toId ? 1 : -1;
+            if (!pairwiseByGroup.has(key)) pairwiseByGroup.set(key, new Map());
+            const groupMap = pairwiseByGroup.get(key)!;
+            const existing = groupMap.get(tripId) || { amount: 0, groupName, groupEmoji };
+            existing.amount += amount * sign;
+            groupMap.set(tripId, existing);
+        };
 
         for (const txn of allTransactions) {
+            const group = tripIdToGroup.get(txn.tripId);
             for (const split of txn.splits) {
                 addDebt(split.userId, txn.payerId, split.amount);
+                if (group) {
+                    addDebtForGroup(split.userId, txn.payerId, split.amount, group.name, group.emoji, txn.tripId);
+                }
             }
         }
         for (const s of allCompletedSettlements) {
+            const group = tripIdToGroup.get(s.tripId);
             addDebt(s.fromId, s.toId, -s.amount);
+            if (group) {
+                addDebtForGroup(s.fromId, s.toId, -s.amount, group.name, group.emoji, s.tripId);
+            }
         }
 
-        const globalTransfers: { from: string; to: string; amount: number; fromName: string; toName: string; fromImage: string | null; toImage: string | null; toUpiId: string | null }[] = [];
+        const globalTransfers: {
+            from: string; to: string; amount: number;
+            fromName: string; toName: string;
+            fromImage: string | null; toImage: string | null;
+            toUpiId: string | null;
+            groupBreakdown: { groupName: string; groupEmoji: string; amount: number }[];
+        }[] = [];
+
         for (const [key, amount] of pairwise.entries()) {
             if (Math.abs(amount) < 1) continue;
             const [userA, userB] = key.split(':');
+
+            // Build per-group breakdown for this pair
+            const groupMap = pairwiseByGroup.get(key);
+            const breakdown: { groupName: string; groupEmoji: string; amount: number }[] = [];
+            if (groupMap) {
+                for (const [, entry] of groupMap.entries()) {
+                    if (Math.abs(entry.amount) < 1) continue;
+                    // Align the amount direction: positive = userA owes userB
+                    breakdown.push({
+                        groupName: entry.groupName,
+                        groupEmoji: entry.groupEmoji,
+                        amount: entry.amount,
+                    });
+                }
+                // Sort by absolute amount descending for readability
+                breakdown.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+            }
+
             if (amount > 0) {
+                // userA owes userB
                 globalTransfers.push({
                     from: userA, to: userB, amount,
                     fromName: nameMap[userA] || 'Unknown', toName: nameMap[userB] || 'Unknown',
                     fromImage: imageMap[userA] || null, toImage: imageMap[userB] || null,
                     toUpiId: upiMap[userB] || null,
+                    groupBreakdown: breakdown.map(b => ({
+                        ...b,
+                        // If net positive, the debt flows userA→userB, so show positive
+                        amount: b.amount,
+                    })),
                 });
             } else {
+                // userB owes userA
                 globalTransfers.push({
                     from: userB, to: userA, amount: -amount,
                     fromName: nameMap[userB] || 'Unknown', toName: nameMap[userA] || 'Unknown',
                     fromImage: imageMap[userB] || null, toImage: imageMap[userA] || null,
                     toUpiId: upiMap[userA] || null,
+                    groupBreakdown: breakdown.map(b => ({
+                        ...b,
+                        // Flip direction: debt flows userB→userA
+                        amount: -b.amount,
+                    })),
                 });
             }
         }
@@ -250,3 +307,4 @@ export async function GET() {
         return NextResponse.json({ error: 'Failed to compute settlements' }, { status: 500 });
     }
 }
+

@@ -108,7 +108,7 @@ export async function PUT(
         // If amount changed, recalculate equal splits
         const updateData: Record<string, unknown> = {};
         if (parsed.data.title) updateData.title = parsed.data.title;
-        if (parsed.data.amount) updateData.amount = parsed.data.amount;
+        if (parsed.data.amount !== undefined) updateData.amount = parsed.data.amount;
         if (parsed.data.category) updateData.category = parsed.data.category;
         if (parsed.data.method) updateData.method = parsed.data.method;
         if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
@@ -205,6 +205,7 @@ export async function DELETE(
         const transaction = await prisma.transaction.findFirst({
             where: {
                 id,
+                deletedAt: null,
                 OR: [
                     { payerId: user.id },
                     { trip: { group: { ownerId: user.id } } },

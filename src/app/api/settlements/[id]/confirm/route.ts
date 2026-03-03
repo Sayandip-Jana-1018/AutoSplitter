@@ -20,8 +20,8 @@ export async function POST(
         const user = await prisma.user.findUnique({ where: { email: session.user.email } });
         if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-        const settlement = await prisma.settlement.findUnique({
-            where: { id },
+        const settlement = await prisma.settlement.findFirst({
+            where: { id, deletedAt: null },
             include: {
                 from: { select: { id: true, name: true } },
                 to: { select: { id: true, name: true } },

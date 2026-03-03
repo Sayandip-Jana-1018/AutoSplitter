@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { isFeatureEnabled } from '@/lib/featureFlags';
+import { z } from 'zod';
+
+const CreateNotificationSchema = z.object({
+    userId: z.string().min(1),
+    type: z.string().min(1),
+    title: z.string().min(1).max(200),
+    body: z.string().min(1).max(500),
+    link: z.string().optional(),
+});
 
 /**
  * GET /api/notifications — list user's notifications (newest first, max 50)
@@ -86,17 +95,12 @@ export async function POST(req: Request) {
         if (!sender) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
         const body = await req.json();
-        const { userId, type, title, body: notifBody, link } = body as {
-            userId: string;
-            type: string;
-            title: string;
-            body: string;
-            link?: string;
-        };
-
-        if (!userId || !type || !title || !notifBody) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        const parsed = CreateNotificationSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid request body' }, { status: 400 });
         }
+
+        const { userId, type, title, body: notifBody, link } = parsed.data;
 
         // Prevent sending notifications to yourself
         if (userId === sender.id) {

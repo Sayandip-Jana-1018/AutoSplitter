@@ -22,6 +22,7 @@ interface ReceiptScanResult {
     total: number;       // paise
     category: string;
     confidence: number;
+    notes: string | null; // warnings about pricing inconsistencies
 }
 
 const SYSTEM_PROMPT = `You are an expert receipt parser with perfect vision. Given a receipt image, extract ALL structured data with 99% accuracy.
@@ -36,20 +37,36 @@ Return ONLY valid JSON with this exact schema (no markdown, no explanation, no c
   "taxes": { "CGST": 25.00, "SGST": 25.00 },
   "total": 550.00,
   "category": "food|transport|shopping|entertainment|bills|health|education|general",
-  "confidence": 0.95
+  "confidence": 0.95,
+  "notes": null
 }
 
 CRITICAL RULES for 99% ACCURACY:
-1. Prices MUST be in the ORIGINAL CURRENCY as exact decimals (e.g., 120.50 for ₹120.50). Do NOT convert currencies.
-2. The "total" MUST EXACTLY MATCH the final charged amount on the receipt. Double-check this digit by digit!
-3. Include EVERY SINGLE ITEM listed. Do not skip or summarize items.
-4. "price" inside "items" must be the TOTAL price for that item row (quantity * unit price) if not explicitly split.
-5. If quantity is missing, default to 1.
-6. Extract all taxes (CGST, SGST, Service Charge, VAT, etc.) into the "taxes" object. If tax type is unclear, use "Tax".
-7. Exclude the "Total" row from the "items" array. Only actual products/services go in "items".
-8. Ignore headers, footers, phone numbers, table numbers, and wifi passwords.
-9. Verify the math: subtotal + taxes + tips/fees SHOULD equal the total. If it doesn't, trust the printed "Total" at the bottom of the receipt.
-10. If the image is blurry/unreadable and you cannot find a total, set confidence below 0.3.
+
+MOST IMPORTANT — TOTAL AMOUNT:
+1. ALWAYS look for the FINAL "Payment", "Grand Total", "Amount Due", "Total Payable", or "Net Amount" printed on the receipt. This is the single source of truth for "total". Copy this number EXACTLY. Do NOT compute the total yourself.
+2. The "total" field MUST be the EXACT printed payment/grand-total amount. Never sum items to derive the total — always read it directly from the receipt.
+3. If multiple totals appear (subtotal, total, grand total, payment), use the LAST/LARGEST one that represents what was actually charged/paid.
+
+ITEM EXTRACTION:
+4. Prices MUST be in the ORIGINAL CURRENCY as exact decimals (e.g., 120.50 for ₹120.50). Do NOT convert currencies.
+5. Include EVERY SINGLE ITEM listed. Do not skip or summarize items.
+6. "price" inside "items" must be the TOTAL price for that item row (quantity × unit price) as printed on the receipt.
+7. If quantity is missing, default to 1.
+8. Exclude "Total", "Subtotal", "Tax", and "Discount" rows from the "items" array. Only actual products/services go in "items".
+
+TAXES & FEES:
+9. Extract all taxes (CGST, SGST, Service Charge, VAT, GST, etc.) into the "taxes" object. If tax type is unclear, use "Tax".
+10. Include service charges, delivery fees, packing charges etc. in taxes with descriptive keys.
+
+VALIDATION:
+11. After extraction, compare: sum of item prices vs subtotal, and subtotal + taxes vs total. If there is any mismatch, STILL use the printed total — do NOT adjust it. Instead, add a note in "notes" explaining the discrepancy (e.g., "Item prices sum to ₹X but printed subtotal is ₹Y").
+12. If individual item prices seem inconsistent or unreasonably priced, note this in "notes" but still extract them as printed.
+13. If the image is blurry/unreadable and you cannot find a total, set confidence below 0.3.
+
+GENERAL:
+14. Ignore headers, footers, phone numbers, table numbers, QR codes, and wifi passwords.
+15. "notes" should be null if everything is consistent, or a brief string describing any pricing discrepancies found.
 Always return raw JSON.`;
 
 export async function POST(req: Request) {
@@ -91,7 +108,7 @@ export async function POST(req: Request) {
                     {
                         role: 'user',
                         content: [
-                            { type: 'text', text: 'Parse this receipt and return structured JSON:' },
+                            { type: 'text', text: 'Parse this receipt. IMPORTANT: Read the final Payment/Grand Total amount directly from the receipt — do NOT compute it from items. Return structured JSON:' },
                             {
                                 type: 'image_url',
                                 image_url: { url: image, detail: 'high' },
@@ -160,6 +177,8 @@ export async function POST(req: Request) {
             }
         }
 
+        const aiNotes = typeof parsed.notes === 'string' ? parsed.notes : null;
+
         const result: ReceiptScanResult = {
             merchant: typeof parsed.merchant === 'string' ? parsed.merchant : null,
             date: typeof parsed.date === 'string' ? parsed.date : null,
@@ -169,6 +188,7 @@ export async function POST(req: Request) {
             total: toPaise(parsed.total),
             category: typeof parsed.category === 'string' ? parsed.category : 'general',
             confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+            notes: aiNotes,
         };
 
         // Sanity check: if total is 0 but items have prices, compute total
@@ -176,6 +196,20 @@ export async function POST(req: Request) {
             result.total = items.reduce((s, i) => s + i.price * i.quantity, 0);
             const taxTotal = Object.values(taxes).reduce((s, v) => s + v, 0);
             result.total += taxTotal;
+        }
+
+        // Post-processing validation: flag if item sum diverges significantly from declared total
+        const itemSum = items.reduce((s, i) => s + i.price * i.quantity, 0);
+        const taxTotal = Object.values(taxes).reduce((s, v) => s + v, 0);
+        const computedTotal = itemSum + taxTotal;
+        if (result.total > 0 && computedTotal > 0) {
+            const diff = Math.abs(result.total - computedTotal);
+            const pct = diff / result.total;
+            if (pct > 0.05 && diff > 500) { // >5% and >₹5 discrepancy
+                const diffRupees = (diff / 100).toFixed(2);
+                const note = `Item prices + taxes sum to ₹${(computedTotal / 100).toFixed(2)} but receipt total is ₹${(result.total / 100).toFixed(2)} (₹${diffRupees} difference). Using printed receipt total.`;
+                result.notes = result.notes ? `${result.notes}. ${note}` : note;
+            }
         }
 
         return NextResponse.json(result);

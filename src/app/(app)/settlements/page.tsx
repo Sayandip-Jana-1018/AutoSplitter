@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import useSWR from 'swr';
-import { ArrowRightLeft, Check, Download, Share2, GitBranch, Inbox, CreditCard, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRightLeft, Check, Download, Share2, GitBranch, Inbox, CreditCard, Bell, ChevronLeft, ChevronRight, ChevronDown, Info } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
 import Badge from '@/components/ui/Badge';
@@ -38,6 +38,7 @@ interface ComputedTransfer {
     fromName?: string; toName?: string;
     fromImage?: string | null; toImage?: string | null;
     toUpiId?: string | null;
+    groupBreakdown?: { groupName: string; groupEmoji: string; amount: number }[];
 }
 interface RecordedSettlement {
     id: string; fromId: string; toId: string; amount: number;
@@ -64,6 +65,7 @@ export default function SettlementsPage() {
     const [confirmSettle, setConfirmSettle] = useState<{ from: string; to: string; amount: number; tripId: string } | null>(null);
     const [settling, setSettling] = useState(false);
     const [upiModal, setUpiModal] = useState<{ open: boolean; amount: number; payeeName: string; payeeUpiId?: string; settlementId?: string }>({ open: false, amount: 0, payeeName: '' });
+    const [expandedGlobalIdx, setExpandedGlobalIdx] = useState<number | null>(null);
 
     // SWR data fetching — single call replaces N+2 waterfall
     const { data, isLoading, mutate } = useSWR<ByGroupResponse>('/api/settlements/by-group', fetcher);
@@ -384,60 +386,148 @@ export default function SettlementsPage() {
                                 style={{ cursor: 'grab', touchAction: 'pan-y' }}
                             >
                                 {isGlobalSlide ? (
-                                    /* Global Summary Card */
+                                    /* Global Summary Card — with per-group breakdown */
                                     <div style={{
                                         ...glass, borderRadius: 'var(--radius-2xl)', padding: 'var(--space-4)',
                                         background: 'linear-gradient(135deg, rgba(var(--accent-500-rgb), 0.06), var(--bg-glass))',
                                     }}>
                                         <div style={{
-                                            display: 'flex', alignItems: 'center', gap: 8,
-                                            marginBottom: 'var(--space-3)',
-                                            fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)', fontWeight: 600,
-                                            textTransform: 'uppercase', letterSpacing: '0.05em',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            marginBottom: 'var(--space-2)',
                                         }}>
-                                            <GitBranch size={12} />
-                                            Global Pairwise Summary
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center', gap: 8,
+                                                fontSize: 'var(--text-xs)', color: 'var(--fg-tertiary)', fontWeight: 600,
+                                                textTransform: 'uppercase', letterSpacing: '0.05em',
+                                            }}>
+                                                <GitBranch size={12} />
+                                                Global Pairwise Summary
+                                            </div>
+                                        </div>
+                                        {/* Explanation */}
+                                        <div style={{
+                                            display: 'flex', alignItems: 'flex-start', gap: 6,
+                                            padding: '8px 10px', borderRadius: 'var(--radius-lg)',
+                                            background: 'rgba(var(--accent-500-rgb), 0.04)',
+                                            border: '1px solid rgba(var(--accent-500-rgb), 0.08)',
+                                            marginBottom: 'var(--space-3)',
+                                            fontSize: 11, color: 'var(--fg-tertiary)', lineHeight: 1.5,
+                                        }}>
+                                            <Info size={13} style={{ flexShrink: 0, marginTop: 1, color: 'var(--accent-400)' }} />
+                                            <span>Net amounts owed between each pair of people across all groups. Tap any row to see which groups contribute.</span>
                                         </div>
                                         {activePending.length > 0 ? (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                                 {activePending.map((s, i) => {
                                                     const isSender = s.from.id === currentUserId;
                                                     const isReceiver = s.to.id === currentUserId;
+                                                    // Find the matching global computed transfer for breakdown
+                                                    const globalComputed = (data?.global?.computed || []) as ComputedTransfer[];
+                                                    const matchingTransfer = globalComputed.find(
+                                                        (t) => t.from === s.from.id && t.to === s.to.id
+                                                    );
+                                                    const breakdown = matchingTransfer?.groupBreakdown || [];
+                                                    const isExpanded = expandedGlobalIdx === i;
                                                     return (
-                                                        <div key={i} style={{
-                                                            display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                                                            padding: '10px 12px', borderRadius: 'var(--radius-lg)',
-                                                            background: isSender
-                                                                ? 'rgba(239, 68, 68, 0.04)'
-                                                                : isReceiver
-                                                                    ? 'rgba(16, 185, 129, 0.04)'
-                                                                    : 'rgba(var(--accent-500-rgb), 0.03)',
-                                                            border: `1px solid ${isSender ? 'rgba(239, 68, 68, 0.08)' : isReceiver ? 'rgba(16, 185, 129, 0.08)' : 'var(--border-glass)'}`,
-                                                        }}>
-                                                            <Avatar name={s.from.name} image={s.from.image} size="xs" />
-                                                            <ArrowRightLeft size={11} style={{ color: 'var(--fg-muted)', flexShrink: 0 }} />
-                                                            <Avatar name={s.to.name} image={s.to.image} size="xs" />
-                                                            <div style={{ flex: 1 }}>
+                                                        <div key={i}>
+                                                            <div
+                                                                onClick={() => setExpandedGlobalIdx(isExpanded ? null : i)}
+                                                                style={{
+                                                                    display: 'flex', alignItems: 'center', gap: 'var(--space-2)',
+                                                                    padding: '10px 12px', borderRadius: isExpanded ? '12px 12px 0 0' : 'var(--radius-lg)',
+                                                                    background: isSender
+                                                                        ? 'rgba(239, 68, 68, 0.04)'
+                                                                        : isReceiver
+                                                                            ? 'rgba(16, 185, 129, 0.04)'
+                                                                            : 'rgba(var(--accent-500-rgb), 0.03)',
+                                                                    border: `1px solid ${isSender ? 'rgba(239, 68, 68, 0.08)' : isReceiver ? 'rgba(16, 185, 129, 0.08)' : 'var(--border-glass)'}`,
+                                                                    borderBottom: isExpanded ? 'none' : undefined,
+                                                                    cursor: breakdown.length > 0 ? 'pointer' : 'default',
+                                                                    transition: 'all 0.2s',
+                                                                }}
+                                                            >
+                                                                <Avatar name={s.from.name} image={s.from.image} size="xs" />
+                                                                <ArrowRightLeft size={11} style={{ color: 'var(--fg-muted)', flexShrink: 0 }} />
+                                                                <Avatar name={s.to.name} image={s.to.image} size="xs" />
+                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                    <span style={{
+                                                                        fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                                        color: isSender ? 'var(--color-error)' : isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
+                                                                    }}>
+                                                                        {isSender ? 'You' : s.from.name}
+                                                                    </span>
+                                                                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-muted)', margin: '0 4px' }}>→</span>
+                                                                    <span style={{
+                                                                        fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                                        color: isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
+                                                                    }}>
+                                                                        {isReceiver ? 'You' : s.to.name}
+                                                                    </span>
+                                                                </div>
                                                                 <span style={{
-                                                                    fontSize: 'var(--text-xs)', fontWeight: 600,
+                                                                    fontSize: 'var(--text-sm)', fontWeight: 800,
                                                                     color: isSender ? 'var(--color-error)' : isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
                                                                 }}>
-                                                                    {isSender ? 'You' : s.from.name}
+                                                                    {formatCurrency(s.amount)}
                                                                 </span>
-                                                                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fg-muted)', margin: '0 4px' }}>→</span>
-                                                                <span style={{
-                                                                    fontSize: 'var(--text-xs)', fontWeight: 600,
-                                                                    color: isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
-                                                                }}>
-                                                                    {isReceiver ? 'You' : s.to.name}
-                                                                </span>
+                                                                {breakdown.length > 0 && (
+                                                                    <ChevronDown
+                                                                        size={14}
+                                                                        style={{
+                                                                            color: 'var(--fg-muted)', flexShrink: 0,
+                                                                            transform: isExpanded ? 'rotate(180deg)' : 'none',
+                                                                            transition: 'transform 0.2s',
+                                                                        }}
+                                                                    />
+                                                                )}
                                                             </div>
-                                                            <span style={{
-                                                                fontSize: 'var(--text-sm)', fontWeight: 800,
-                                                                color: isSender ? 'var(--color-error)' : isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
-                                                            }}>
-                                                                {formatCurrency(s.amount)}
-                                                            </span>
+                                                            {/* Per-group breakdown */}
+                                                            <AnimatePresence>
+                                                                {isExpanded && breakdown.length > 0 && (
+                                                                    <motion.div
+                                                                        initial={{ height: 0, opacity: 0 }}
+                                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                        transition={{ duration: 0.2 }}
+                                                                        style={{ overflow: 'hidden' }}
+                                                                    >
+                                                                        <div style={{
+                                                                            padding: '8px 12px 10px',
+                                                                            borderRadius: '0 0 12px 12px',
+                                                                            background: 'rgba(var(--accent-500-rgb), 0.02)',
+                                                                            border: `1px solid ${isSender ? 'rgba(239, 68, 68, 0.08)' : isReceiver ? 'rgba(16, 185, 129, 0.08)' : 'var(--border-glass)'}`,
+                                                                            borderTop: 'none',
+                                                                            display: 'flex', flexDirection: 'column', gap: 4,
+                                                                        }}>
+                                                                            <span style={{
+                                                                                fontSize: 10, fontWeight: 700, color: 'var(--fg-muted)',
+                                                                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                                                                marginBottom: 2,
+                                                                            }}>
+                                                                                Breakdown by group
+                                                                            </span>
+                                                                            {breakdown.filter(b => b.amount > 0).map((b, bIdx) => (
+                                                                                <div key={bIdx} style={{
+                                                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                                                    padding: '4px 8px', borderRadius: 8,
+                                                                                    background: 'var(--bg-secondary)',
+                                                                                }}>
+                                                                                    <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, color: 'var(--fg-secondary)' }}>
+                                                                                        <span>{b.groupEmoji}</span>
+                                                                                        <span style={{ fontWeight: 600 }}>{b.groupName}</span>
+                                                                                    </span>
+                                                                                    <span style={{
+                                                                                        fontSize: 12, fontWeight: 700,
+                                                                                        color: isSender ? 'var(--color-error)' : isReceiver ? 'var(--color-success)' : 'var(--fg-primary)',
+                                                                                    }}>
+                                                                                        {formatCurrency(b.amount)}
+                                                                                    </span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
                                                         </div>
                                                     );
                                                 })}
@@ -476,6 +566,17 @@ export default function SettlementsPage() {
                                                     }}>
                                                         {graphSettlements.length} transfer{graphSettlements.length !== 1 ? 's' : ''}
                                                     </span>
+                                                </div>
+                                                <div style={{
+                                                    display: 'flex', alignItems: 'flex-start', gap: 6,
+                                                    padding: '6px 10px', borderRadius: 'var(--radius-lg)',
+                                                    background: 'rgba(var(--accent-500-rgb), 0.04)',
+                                                    border: '1px solid rgba(var(--accent-500-rgb), 0.08)',
+                                                    marginBottom: 'var(--space-2)',
+                                                    fontSize: 11, color: 'var(--fg-tertiary)', lineHeight: 1.5,
+                                                }}>
+                                                    <Info size={13} style={{ flexShrink: 0, marginTop: 1, color: 'var(--accent-400)' }} />
+                                                    <span>Debts are simplified to minimize total transfers. The amounts shown settle all balances in fewest payments.</span>
                                                 </div>
                                                 <SettlementGraph
                                                     members={graphMembers}
@@ -651,8 +752,8 @@ export default function SettlementsPage() {
                                                 {isSender && (
                                                     <Button size="sm" leftIcon={<CreditCard size={13} />}
                                                         style={{
-                                                            background: 'linear-gradient(135deg, #4CAF50, #2E7D32)',
-                                                            boxShadow: '0 4px 16px rgba(76,175,80,0.25)',
+                                                            background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
+                                                            boxShadow: '0 4px 16px rgba(var(--accent-500-rgb), 0.25)',
                                                         }}
                                                         onClick={async () => {
                                                             const resolvedTripId = settlement.tripId || tripId;

@@ -44,11 +44,11 @@ const NAV_ITEMS = [
 ];
 
 const BOTTOM_NAV = [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-    { href: '/groups', icon: Users, label: 'Groups' },
-    { href: '/contacts', icon: Contact, label: 'Contacts' },
-    { href: '/transactions', icon: Receipt, label: 'Activity' },
-    { href: '/settlements', icon: ArrowRightLeft, label: 'Settle' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Home', color: '#3b82f6' },
+    { href: '/groups', icon: Users, label: 'Groups', color: '#8b5cf6' },
+    { href: '/contacts', icon: Contact, label: 'Contacts', color: '#f59e0b' },
+    { href: '/transactions', icon: Receipt, label: 'Activity', color: '#10b981' },
+    { href: '/settlements', icon: ArrowRightLeft, label: 'Settle', color: '#f43f5e' },
 ];
 
 /* ── Animation variants ── */
@@ -351,18 +351,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                         router.push(item.href);
                                     }}
                                     whileTap={{ scale: 0.85 }}
+                                    style={{
+                                        color: isActive ? item.color : undefined,
+                                    }}
                                 >
                                     <motion.div
                                         className={styles.bottomNavIconWrap}
                                         animate={isActive ? { y: -2, scale: 1.1 } : { y: 0, scale: 1 }}
                                         transition={{ type: 'spring', damping: 18, stiffness: 350 }}
                                     >
-                                        <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+                                        <Icon
+                                            size={22}
+                                            strokeWidth={isActive ? 2.5 : 1.8}
+                                            style={{
+                                                color: isActive ? item.color : `${item.color}80`,
+                                                transition: 'color 0.25s ease',
+                                            }}
+                                        />
                                         {isActive && (
                                             <motion.div
                                                 className={styles.bottomNavDot}
                                                 layoutId="bottomNavDot"
                                                 transition={{ type: 'spring', damping: 25, stiffness: 400 }}
+                                                style={{
+                                                    background: item.color,
+                                                    boxShadow: `0 0 8px ${item.color}80`,
+                                                }}
                                             />
                                         )}
                                     </motion.div>
@@ -372,6 +386,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                             className={styles.bottomNavActivePill}
                                             layoutId="bottomNavActive"
                                             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                                            style={{
+                                                background: `${item.color}12`,
+                                                borderColor: `${item.color}18`,
+                                            }}
                                         />
                                     )}
                                 </motion.button>

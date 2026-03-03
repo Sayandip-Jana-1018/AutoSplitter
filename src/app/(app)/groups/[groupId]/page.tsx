@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
@@ -298,64 +299,67 @@ export default function GroupDetailPage() {
                     </div>
                 </div>
 
-                {/* ── Delete Group Confirmation Modal ── */}
-                <AnimatePresence>
-                    {showDeleteConfirm && (
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            style={{
-                                position: 'fixed', inset: 0, zIndex: 999,
-                                background: 'transparent', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                padding: 'var(--space-4)',
-                            }}
-                            onClick={() => setShowDeleteConfirm(false)}
-                        >
+                {/* ── Delete Group Confirmation Modal (Portal) ── */}
+                {typeof document !== 'undefined' && createPortal(
+                    <AnimatePresence>
+                        {showDeleteConfirm && (
                             <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                                onClick={e => e.stopPropagation()}
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                                 style={{
-                                    background: 'var(--bg-elevated)', borderRadius: 'var(--radius-2xl)',
-                                    padding: 'var(--space-5)', maxWidth: 360, width: '100%',
-                                    border: '1px solid var(--border-subtle)',
-                                    boxShadow: 'var(--shadow-xl)',
+                                    position: 'fixed', inset: 0, zIndex: 9999,
+                                    background: 'transparent', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    padding: 'var(--space-4)',
                                 }}
+                                onClick={() => setShowDeleteConfirm(false)}
                             >
-                                <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-2)' }}>Delete Group?</h3>
-                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-secondary)', marginBottom: 'var(--space-4)' }}>
-                                    This will permanently delete <strong>{group.name}</strong>, all transactions, and cancel all pending settlements. This action cannot be undone.
-                                </p>
-                                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                                    <Button size="sm" variant="ghost" style={{ flex: 1 }}
-                                        onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-                                    <Button size="sm" style={{
-                                        flex: 1, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff',
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                    onClick={e => e.stopPropagation()}
+                                    style={{
+                                        background: 'var(--bg-elevated)', borderRadius: 'var(--radius-2xl)',
+                                        padding: 'var(--space-5)', maxWidth: 360, width: '100%',
+                                        border: '1px solid var(--border-subtle)',
+                                        boxShadow: 'var(--shadow-xl)',
                                     }}
-                                        disabled={deletingGroup}
-                                        onClick={async () => {
-                                            setDeletingGroup(true);
-                                            try {
-                                                const res = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
-                                                if (res.ok) {
-                                                    toast('Group deleted successfully', 'success');
-                                                    router.push('/groups');
-                                                } else {
-                                                    const err = await res.json().catch(() => ({}));
-                                                    toast(err.error || 'Failed to delete group', 'error');
-                                                }
-                                            } catch { toast('Network error', 'error'); }
-                                            finally { setDeletingGroup(false); setShowDeleteConfirm(false); }
+                                >
+                                    <h3 style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-2)' }}>Delete Group?</h3>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fg-secondary)', marginBottom: 'var(--space-4)' }}>
+                                        This will permanently delete <strong>{group.name}</strong>, all transactions, and cancel all pending settlements. This action cannot be undone.
+                                    </p>
+                                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                                        <Button size="sm" variant="ghost" style={{ flex: 1 }}
+                                            onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+                                        <Button size="sm" style={{
+                                            flex: 1, background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: '#fff',
                                         }}
-                                    >
-                                        {deletingGroup ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                                        {deletingGroup ? 'Deleting...' : 'Delete'}
-                                    </Button>
-                                </div>
+                                            disabled={deletingGroup}
+                                            onClick={async () => {
+                                                setDeletingGroup(true);
+                                                try {
+                                                    const res = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
+                                                    if (res.ok) {
+                                                        toast('Group deleted successfully', 'success');
+                                                        router.push('/groups');
+                                                    } else {
+                                                        const err = await res.json().catch(() => ({}));
+                                                        toast(err.error || 'Failed to delete group', 'error');
+                                                    }
+                                                } catch { toast('Network error', 'error'); }
+                                                finally { setDeletingGroup(false); setShowDeleteConfirm(false); }
+                                            }}
+                                        >
+                                            {deletingGroup ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                            {deletingGroup ? 'Deleting...' : 'Delete'}
+                                        </Button>
+                                    </div>
+                                </motion.div>
                             </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
 
                 {/* Group identity — centered */}
                 <motion.div
@@ -597,7 +601,7 @@ export default function GroupDetailPage() {
                                     backdropFilter: 'blur(12px)',
                                     border: '1px solid var(--border-glass)',
                                     cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                     color: 'var(--fg-secondary)',
                                     fontSize: 'var(--text-sm)', fontWeight: 600,
                                     transition: 'all 0.2s',
@@ -614,7 +618,7 @@ export default function GroupDetailPage() {
                                     backdropFilter: 'blur(12px)',
                                     border: '1px solid var(--border-glass)',
                                     cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                     color: 'var(--fg-secondary)',
                                     fontSize: 'var(--text-sm)', fontWeight: 600,
                                     transition: 'all 0.2s',

@@ -1,6 +1,6 @@
 # ⚡ SplitX — Smart Expense Splitting & Settlement
 
-> A production-grade, full-stack expense-splitting web app built with **Next.js 16**, **Prisma**, **PostgreSQL (Neon)**, and **NextAuth v5**. Features glassmorphic UI, AI-powered receipt scanning (Tesseract OCR + OpenAI Vision), Gemini AI chat assistant, real-time group chat with avatars, debt simplification, real-time analytics, smart notifications, backend security hardening, and 12 color themes.
+> A production-grade, full-stack expense-splitting web app built with **Next.js 16**, **Prisma**, **PostgreSQL (Neon)**, and **NextAuth v5**. Features glassmorphic UI, AI-powered receipt scanning (Tesseract OCR + OpenAI Vision), Gemini AI chat assistant, real-time group chat with avatars, debt simplification with transparent calculation breakdowns, real-time analytics, smart notifications, colorful themed navigation, backend security hardening, and 12 color themes.
 
 ---
 
@@ -223,11 +223,12 @@ erDiagram
 | **Trip Scoping** | Organize expenses within trips per group with date ranges and currency |
 | **Split Types** | Equal, percentage, custom, and item-based splitting — backend validates split sums equal total and all user IDs are group members |
 | **Settlements** | Track who owes whom, centered card layout with "Pay via UPI" and subtle "Mark Settled" text link for cash/offline payments |
-| **Settlement Security** | Self-settlement block, 60s duplicate check (pending + initiated + completed), sender + recipient membership verification, soft-delete filters |
+| **Settlement Transparency** | Per-group info tooltips explain simplified transfers; global view has expandable per-group breakdown showing how each group contributes to pairwise debts |
+| **Settlement Security** | Self-settlement block, 60s duplicate check (pending + initiated + completed), sender + recipient membership verification, **over-settlement guard** (rejects amounts exceeding actual debt with clear error), soft-delete filters |
 | **UPI Payment Notifications** | All group members notified on UPI payment — receiver gets ✅, others get 💸 |
 | **Transaction Edit Notifications** | All group members notified when any expense is edited (✏️) |
 | **Debt Simplification** | Dual algorithm: greedy netting + optimized exact-match pruning (auto-picks fewer transfers) |
-| **Per-Group Settlement Graphs** | Swipeable carousel with per-group settlement visualization + global overview |
+| **Per-Group Settlement Graphs** | Swipeable carousel with per-group settlement visualization + global pairwise overview with expandable group breakdowns |
 | **Analytics Dashboard** | 6-month spending trends, category breakdown, budget vs actual comparison, smart AI insights |
 | **Budget Tracking** | Set monthly budgets per category, compare against actual spending |
 | **CSV/JSON Export** | Export transaction data for external use |
@@ -254,6 +255,8 @@ erDiagram
 | Feature | Description |
 |---|---|
 | **Glassmorphism Design** | Frosted-glass cards with blur, saturation, and gradient overlays |
+| **Colorful Bottom Navigation** | Each nav icon (Home, Groups, Contacts, Activity, Settle) has a distinct vibrant color with active/inactive states |
+| **Enhanced Nav Blur** | 60px backdrop-filter blur with 96% opacity + gradient fade mask for seamless content transition |
 | **12 Color Themes** | Rose, Ocean, Emerald, Violet, Amber, Slate, Coral, Teal, Indigo, Lime, Fuchsia, Cyan |
 | **Dark / Light Mode** | System-aware with manual toggle; theme saved to localStorage |
 | **Animated Numbers** | Counting animations on dashboard stats |
@@ -267,7 +270,7 @@ erDiagram
 | **Empty States** | Animated empty-state illustrations with contextual CTAs |
 | **Amount Pad** | GPay-style digit-by-digit number pad bottom sheet |
 | **Receipt Gallery** | Browse scanned receipt thumbnails in a 2-column grid with member filter and full-size overlay |
-| **Group Receipt Gallery** | Per-group receipt gallery page with masonry grid, payer filter, and zoomed view with expense details |
+| **Group Receipt Gallery** | Per-group receipt gallery with date-grouped card layout, payer avatars, and lightbox view |
 | **QR Code Invites** | Generate QR codes for group invitations |
 | **Centered Split UI** | Split-among member avatars center-aligned with clean multi-line wrapping |
 
@@ -279,10 +282,12 @@ erDiagram
 | **Feature Flags** | Toggle features on/off without code changes |
 | **Rate Limiting Middleware** | Tiered in-memory rate limiter: 5/hr register, 10/15min auth, 30/min settlements, 120/min default |
 | **Security Headers** | HSTS, X-Frame-Options DENY, X-Content-Type-Options, Permissions-Policy (no camera/mic/geo), Referrer-Policy |
-| **Soft Deletes** | All destructive operations (group delete, transaction delete, settlement cancel) use soft deletes; single-transaction GET also filters `deletedAt` |
+| **Soft Deletes** | All destructive operations (group delete, transaction delete, settlement cancel) use soft deletes with `deletedAt` guards on all queries including DELETE endpoints |
+| **Over-Settlement Guard** | Server-side pairwise debt calculation prevents settling more than what's owed; graceful degradation on calculation failure |
 | **Permission Model** | Delete group = owner only, remove member = owner/admin only, delete/edit transaction = payer or group owner only |
-| **Input Validation** | Zod schemas on all mutations; custom splits validated (sum = total, user IDs ∈ group members); settlement recipient must be group member |
+| **Input Validation** | Zod schemas on all mutations including notification POST; custom splits validated (sum = total, user IDs ∈ group members); settlement recipient must be group member |
 | **Anti-Spam** | Notification POST requires sender & recipient share ≥1 group; duplicate settlement check covers pending/initiated/completed within 60s |
+| **Performance Indexes** | Composite DB indexes on `Settlement(tripId, status)` and `Notification(userId, read)` for optimized queries |
 
 ---
 

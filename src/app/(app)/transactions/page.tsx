@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Search, ArrowUpDown, ScanLine, Inbox, Trash2, Pencil, Check, X, Clock, List, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -663,93 +664,96 @@ export default function TransactionsPage() {
                 </motion.div>
             )}
 
-            {/* ── Delete Confirmation Modal ── */}
-            <AnimatePresence>
-                {deleteConfirmId && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        onClick={() => setDeleteConfirmId(null)}
-                        style={{
-                            position: 'fixed', inset: 0, zIndex: 9999,
-                            background: 'transparent',
-                            backdropFilter: 'blur(8px)',
-                            WebkitBackdropFilter: 'blur(8px)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            padding: 20,
-                        }}
-                    >
+            {/* ── Delete Confirmation Modal (Portal to body for correct viewport centering) ── */}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {deleteConfirmId && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.85, y: 30 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.85, y: 30 }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                            onClick={(e) => e.stopPropagation()}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={() => setDeleteConfirmId(null)}
                             style={{
-                                width: '100%', maxWidth: 340,
-                                background: 'var(--bg-elevated)',
-                                border: '1px solid var(--border-glass)',
-                                borderRadius: 24, padding: 28,
-                                boxShadow: '0 24px 64px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05)',
-                                textAlign: 'center',
+                                position: 'fixed', inset: 0, zIndex: 9999,
+                                background: 'transparent',
+                                backdropFilter: 'blur(8px)',
+                                WebkitBackdropFilter: 'blur(8px)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                padding: 20,
                             }}
                         >
-                            {/* Icon */}
-                            <div style={{
-                                width: 56, height: 56, borderRadius: 16, margin: '0 auto 16px',
-                                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                boxShadow: '0 8px 24px rgba(239, 68, 68, 0.3)',
-                            }}>
-                                <Trash2 size={24} color="#fff" />
-                            </div>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.85, y: 30 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.85, y: 30 }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    width: '100%', maxWidth: 340,
+                                    background: 'var(--bg-elevated)',
+                                    border: '1px solid var(--border-glass)',
+                                    borderRadius: 24, padding: 28,
+                                    boxShadow: '0 24px 64px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05)',
+                                    textAlign: 'center',
+                                }}
+                            >
+                                {/* Icon */}
+                                <div style={{
+                                    width: 56, height: 56, borderRadius: 16, margin: '0 auto 16px',
+                                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    boxShadow: '0 8px 24px rgba(239, 68, 68, 0.3)',
+                                }}>
+                                    <Trash2 size={24} color="#fff" />
+                                </div>
 
-                            <h3 style={{
-                                fontSize: 18, fontWeight: 700, color: 'var(--fg-primary)', marginBottom: 8,
-                            }}>
-                                Delete Expense?
-                            </h3>
-                            <p style={{
-                                fontSize: 13.5, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 24,
-                            }}>
-                                This will permanently remove the expense and all its splits. This action cannot be undone.
-                            </p>
+                                <h3 style={{
+                                    fontSize: 18, fontWeight: 700, color: 'var(--fg-primary)', marginBottom: 8,
+                                }}>
+                                    Delete Expense?
+                                </h3>
+                                <p style={{
+                                    fontSize: 13.5, color: 'var(--fg-secondary)', lineHeight: 1.6, marginBottom: 24,
+                                }}>
+                                    This will permanently remove the expense and all its splits. This action cannot be undone.
+                                </p>
 
-                            {/* Buttons */}
-                            <div style={{ display: 'flex', gap: 10 }}>
-                                <button
-                                    onClick={() => setDeleteConfirmId(null)}
-                                    style={{
-                                        flex: 1, padding: '12px 0', borderRadius: 14,
-                                        border: '1px solid var(--border-glass)',
-                                        background: 'var(--surface-card)', color: 'var(--fg-primary)',
-                                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(deleteConfirmId)}
-                                    style={{
-                                        flex: 1, padding: '12px 0', borderRadius: 14,
-                                        border: 'none',
-                                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                                        color: '#fff',
-                                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                                        boxShadow: '0 4px 16px rgba(239, 68, 68, 0.3)',
-                                        transition: 'all 0.2s',
-                                    }}
-                                >
-                                    Delete
-                                </button>
-                            </div>
+                                {/* Buttons */}
+                                <div style={{ display: 'flex', gap: 10 }}>
+                                    <button
+                                        onClick={() => setDeleteConfirmId(null)}
+                                        style={{
+                                            flex: 1, padding: '12px 0', borderRadius: 14,
+                                            border: '1px solid var(--border-glass)',
+                                            background: 'var(--surface-card)', color: 'var(--fg-primary)',
+                                            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(deleteConfirmId)}
+                                        style={{
+                                            flex: 1, padding: '12px 0', borderRadius: 14,
+                                            border: 'none',
+                                            background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                                            color: '#fff',
+                                            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                                            boxShadow: '0 4px 16px rgba(239, 68, 68, 0.3)',
+                                            transition: 'all 0.2s',
+                                        }}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </div>
     );
 }

@@ -15,7 +15,7 @@ interface ChatMsg {
 }
 
 const QUICK_ACTIONS = [
-    { icon: <Wallet size={16} />, label: 'Who owes me?', query: 'Who owes me?', gradient: 'linear-gradient(135deg, #10b981, #059669)' },
+    { icon: <Wallet size={16} />, label: 'Who owes me?', query: 'Who owes me?', gradient: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))' },
     { icon: <TrendingUp size={16} />, label: 'My spending', query: 'My spending breakdown', gradient: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' },
     { icon: <Receipt size={16} />, label: 'My balance', query: 'Show my balance summary', gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)' },
     { icon: <Users size={16} />, label: 'My groups', query: 'My groups', gradient: 'linear-gradient(135deg, #f59e0b, #d97706)' },
@@ -181,14 +181,14 @@ export default function AIChatPanel() {
                             width: 52,
                             height: 52,
                             borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
+                            background: 'linear-gradient(135deg, var(--accent-500) 0%, var(--accent-600) 50%, var(--accent-700, var(--accent-600)) 100%)',
                             border: 'none',
                             color: '#fff',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 4px 24px rgba(16, 185, 129, 0.45), 0 0 0 4px rgba(16, 185, 129, 0.1)',
+                            boxShadow: '0 4px 24px rgba(var(--accent-500-rgb), 0.45), 0 0 0 4px rgba(var(--accent-500-rgb), 0.1)',
                             zIndex: 90,
                         }}
                     >
@@ -230,8 +230,8 @@ export default function AIChatPanel() {
                         <div style={{
                             position: 'relative',
                             padding: '16px 16px 14px',
-                            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.04) 100%)',
-                            borderBottom: '1px solid rgba(16, 185, 129, 0.1)',
+                            background: 'linear-gradient(135deg, rgba(var(--accent-500-rgb), 0.08) 0%, rgba(var(--accent-500-rgb), 0.04) 100%)',
+                            borderBottom: '1px solid rgba(var(--accent-500-rgb), 0.1)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 10,
@@ -248,9 +248,9 @@ export default function AIChatPanel() {
                                         width: 30,
                                         height: 30,
                                         borderRadius: 10,
-                                        background: 'rgba(16, 185, 129, 0.1)',
-                                        border: '1px solid rgba(16, 185, 129, 0.15)',
-                                        color: '#10b981',
+                                        background: 'rgba(var(--accent-500-rgb), 0.1)',
+                                        border: '1px solid rgba(var(--accent-500-rgb), 0.15)',
+                                        color: 'var(--accent-500)',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
@@ -267,13 +267,13 @@ export default function AIChatPanel() {
                                 width: 36,
                                 height: 36,
                                 borderRadius: 12,
-                                background: 'linear-gradient(135deg, #10b981, #059669)',
+                                background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 color: '#fff',
                                 flexShrink: 0,
-                                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                                boxShadow: '0 2px 8px rgba(var(--accent-500-rgb), 0.3)',
                             }}>
                                 <Sparkles size={18} />
                             </div>
@@ -289,7 +289,7 @@ export default function AIChatPanel() {
                                 </h3>
                                 <p style={{
                                     fontSize: 11,
-                                    color: '#10b981',
+                                    color: 'var(--accent-500)',
                                     fontWeight: 500,
                                     marginTop: 1,
                                     display: 'flex',
@@ -300,9 +300,9 @@ export default function AIChatPanel() {
                                         width: 6,
                                         height: 6,
                                         borderRadius: '50%',
-                                        background: '#10b981',
+                                        background: 'var(--accent-500)',
                                         display: 'inline-block',
-                                        boxShadow: '0 0 6px rgba(16, 185, 129, 0.5)',
+                                        boxShadow: '0 0 6px rgba(var(--accent-500-rgb), 0.5)',
                                     }} />
                                     {hasMessages ? 'Analyzing your data' : 'Online — ready to help'}
                                 </p>
@@ -447,7 +447,7 @@ export default function AIChatPanel() {
                                         borderRadius: msg.role === 'user' ? 10 : 10,
                                         background: msg.role === 'user'
                                             ? 'linear-gradient(135deg, rgba(var(--accent-500-rgb), 0.15), rgba(var(--accent-500-rgb), 0.08))'
-                                            : 'linear-gradient(135deg, #10b981, #059669)',
+                                            : 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -501,7 +501,7 @@ export default function AIChatPanel() {
                                         width: 28,
                                         height: 28,
                                         borderRadius: 10,
-                                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                                        background: 'linear-gradient(135deg, var(--accent-500), var(--accent-600))',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -534,7 +534,7 @@ export default function AIChatPanel() {
                                                         width: 6,
                                                         height: 6,
                                                         borderRadius: '50%',
-                                                        background: '#10b981',
+                                                        background: 'var(--accent-500)',
                                                     }}
                                                 />
                                             ))}
@@ -576,9 +576,9 @@ export default function AIChatPanel() {
                                         style={{
                                             padding: '5px 10px',
                                             borderRadius: 20,
-                                            background: 'rgba(16, 185, 129, 0.06)',
-                                            border: '1px solid rgba(16, 185, 129, 0.12)',
-                                            color: '#10b981',
+                                            background: 'rgba(var(--accent-500-rgb), 0.06)',
+                                            border: '1px solid rgba(var(--accent-500-rgb), 0.12)',
+                                            color: 'var(--accent-500)',
                                             fontSize: 11,
                                             fontWeight: 600,
                                             cursor: 'pointer',
@@ -627,8 +627,8 @@ export default function AIChatPanel() {
                                     transition: 'border-color 0.2s, box-shadow 0.2s',
                                 }}
                                 onFocus={(e) => {
-                                    e.currentTarget.style.borderColor = '#10b981';
-                                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.1)';
+                                    e.currentTarget.style.borderColor = 'var(--accent-500)';
+                                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--accent-500-rgb), 0.1)';
                                 }}
                                 onBlur={(e) => {
                                     e.currentTarget.style.borderColor = 'var(--border-subtle)';
@@ -644,7 +644,7 @@ export default function AIChatPanel() {
                                     height: 40,
                                     borderRadius: 12,
                                     background: input.trim()
-                                        ? 'linear-gradient(135deg, #10b981, #059669)'
+                                        ? 'linear-gradient(135deg, var(--accent-500), var(--accent-600))'
                                         : 'var(--bg-secondary)',
                                     border: input.trim()
                                         ? 'none'
@@ -657,7 +657,7 @@ export default function AIChatPanel() {
                                     flexShrink: 0,
                                     transition: 'all 0.2s',
                                     boxShadow: input.trim()
-                                        ? '0 2px 8px rgba(16, 185, 129, 0.3)'
+                                        ? '0 2px 8px rgba(var(--accent-500-rgb), 0.3)'
                                         : 'none',
                                 }}
                             >

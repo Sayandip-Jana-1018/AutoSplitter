@@ -214,6 +214,7 @@ model Settlement {
   updatedAt DateTime  @updatedAt
 
   @@index([tripId])
+  @@index([tripId, status])
   @@index([fromId])
   @@index([toId])
 }
@@ -272,6 +273,8 @@ model Notification {
   actor     User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
+
+  @@index([userId, read])
 }
 
 // ── Phase 2: Budget ─────────────────────────────────────────
